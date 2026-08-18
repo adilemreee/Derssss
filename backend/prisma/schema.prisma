@@ -1,0 +1,190 @@
+// Ders Defteri backend veri modeli.
+//
+// Senkronizasyon tasarımı:
+//  - Her kayıt cihazda üretilen bir UUID (clientId) ile kimliklenir; sunucu kimliği
+//    hiçbir zaman cihaza sızmaz. Böylece çevrimdışı üretilen kayıtlar çakışmaz.
+//  - `updatedAt` sunucunun yazma anıdır ve çekme imlecidir (monotonik artar).
+//  - `clientUpdatedAt` cihazın mantıksal saatidir; çakışmada son yazan kazanır
+//    kuralı buna bakar. İkisini ayırmak, saati şaşmış bir cihazın imleci
+//    bozmasını engeller.
+//  - Silme her zaman yumuşak silmedir (`deletedAt`); aksi halde diğer cihaz
+//    silinen kaydı bilmediği için geri diriltir.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  appleSub      String    @unique
+  email         String?
+  name          String?
+  createdAt     DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
+
+  students      Student[]
+  lessons       Lesson[]
+  payments      Payment[]
+  homeworks     Homework[]
+  templates     RecurringTemplate[]
+  subscription  Subscription?
+
+  @@map("users")
+}
+
+model Student {
+  id              String    @id @default(uuid())
+  userId          String
+  clientId        String    @db.Uuid
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name            String    @default("")
+  subject         String    @default("")
+  grade           String    @default("")
+  phone           String    @default("")
+  parentName      String    @default("")
+  parentPhone     String    @default("")
+  hourlyRate      Float     @default(0)
+  startDate       DateTime  @default(now())
+  colorIndex      Int       @default(0)
+  notes           String    @default("")
+  isArchived      Boolean   @default(false)
+
+  clientUpdatedAt DateTime
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  @@unique([userId, clientId])
+  @@index([userId, updatedAt])
+  @@map("students")
+}
+
+model Lesson {
+  id              String    @id @default(uuid())
+  userId          String
+  clientId        String    @db.Uuid
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  studentClientId String?   @db.Uuid
+  templateClientId String?  @db.Uuid
+
+  date            DateTime
+  duration        Int       @default(60)
+  status          String    @default("planned")
+  /// none | student | teacher | makeup — yalnız status = cancelled iken anlamlı
+  cancellationReason String @default("none")
+  topic           String    @default("")
+  note            String    @default("")
+  feeOverride     Float?
+  usesCustomFee   Boolean   @default(false)
+
+  clientUpdatedAt DateTime
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  @@unique([userId, clientId])
+  @@index([userId, updatedAt])
+  @@map("lessons")
+}
+
+model Payment {
+  id              String    @id @default(uuid())
+  userId          String
+  clientId        String    @db.Uuid
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  studentClientId String?   @db.Uuid
+
+  date            DateTime
+  amount          Float     @default(0)
+  method          String    @default("cash")
+  note            String    @default("")
+
+  clientUpdatedAt DateTime
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  @@unique([userId, clientId])
+  @@index([userId, updatedAt])
+  @@map("payments")
+}
+
+model Homework {
+  id              String    @id @default(uuid())
+  userId          String
+  clientId        String    @db.Uuid
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  studentClientId String?   @db.Uuid
+
+  title           String    @default("")
+  detail          String    @default("")
+  assignedDate    DateTime
+  dueDate         DateTime
+  isDone          Boolean   @default(false)
+  doneDate        DateTime?
+
+  clientUpdatedAt DateTime
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  @@unique([userId, clientId])
+  @@index([userId, updatedAt])
+  @@map("homeworks")
+}
+
+model RecurringTemplate {
+  id              String    @id @default(uuid())
+  userId          String
+  clientId        String    @db.Uuid
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  studentClientId String?   @db.Uuid
+
+  weekday         Int       @default(3)
+  hour            Int       @default(17)
+  minute          Int       @default(0)
+  duration        Int       @default(60)
+  feeOverride     Float?
+  usesCustomFee   Boolean   @default(false)
+  isPaused        Boolean   @default(false)
+  generatedUntil  DateTime?
+
+  clientUpdatedAt DateTime
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  @@unique([userId, clientId])
+  @@index([userId, updatedAt])
+  @@map("recurring_templates")
+}
+
+// MARK: - Abonelik
+
+model Subscription {
+  id                    String    @id @default(uuid())
+  userId                String    @unique
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// App Store'un abone için ürettiği kalıcı kimlik. Yenileme bildirimleri
+  /// kullanıcıyı değil bunu taşır; eşleştirme buradan yapılır.
+  originalTransactionId String    @unique
+  productId             String
+  /// active | expired | grace | revoked
+  status                String    @default("active")
+  environment           String    @default("Production")
+  expiresAt             DateTime?
+  autoRenew             Boolean   @default(true)
+  revokedAt             DateTime?
+
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([originalTransactionId])
+  @@map("subscriptions")
+}

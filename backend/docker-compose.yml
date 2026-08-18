@@ -1,0 +1,34 @@
+# Ders Defteri API — üretim yapılandırması (sunucu: /opt/dersdefteri)
+#
+# Postgres ve Redis bilerek burada tanımlanmaz: sunucuda zaten çalışan
+# sevgiliapp yığınının container'ları kullanılır. Bu servis o ağa dışarıdan
+# katılır ve yalnızca kendi veritabanına (dersdefteri) ve kendi Redis
+# indeksine (1) dokunur; sevgiliapp verisine hiçbir yolu yoktur.
+services:
+  api:
+    build: .
+    container_name: dersdefteri-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: 4001
+      APPLE_PRIVATE_KEY_PATH: /secrets/AuthKey.p8
+    volumes:
+      - ./secrets:/secrets:ro
+    ports:
+      # Yalnızca localhost'a bağlanır; dışarıya Cloudflare Tunnel açar.
+      - "127.0.0.1:4001:4001"
+    networks:
+      - sevgiliapp
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+networks:
+  sevgiliapp:
+    external: true
+    name: sevgiliapp_default
