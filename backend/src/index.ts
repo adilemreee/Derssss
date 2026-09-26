@@ -18,7 +18,12 @@ const app = Fastify({
   logger: {
     level: config.NODE_ENV === 'development' ? 'debug' : 'info',
     // Kimlik jetonları ve imzalı işlemler loga düşmemeli.
-    redact: ['req.headers.authorization', 'body.identityToken', 'body.signedTransaction'],
+    redact: [
+      'req.headers.authorization',
+      'body.identityToken',
+      'body.authorizationCode',
+      'body.signedTransaction',
+    ],
   },
   trustProxy: true,
   bodyLimit: 4 * 1024 * 1024,
@@ -48,7 +53,14 @@ await app.register(rateLimit, {
   max: 300,
   timeWindow: '1 minute',
   redis,
-  keyGenerator: (request) => request.userId ?? request.ip,
+  // API yalnızca Cloudflare Tunnel üzerinden erişilebilir (port 127.0.0.1'e
+  // bağlı) ve CF-Connecting-IP başlığını Cloudflare her istekte kendisi
+  // yazar. X-Forwarded-For ise istemcinin uydurduğu değeri de taşıdığından
+  // anahtar olursa sınır her istekte farklı IP yazılarak aşılabilir.
+  keyGenerator: (request) => {
+    const clientIp = request.headers['cf-connecting-ip'];
+    return typeof clientIp === 'string' && clientIp.length > 0 ? clientIp : request.ip;
+  },
 });
 
 await app.register(authRoutes);

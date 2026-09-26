@@ -5,6 +5,7 @@
 //  Eşitleme durumu, hesap, çıkış ve hesap silme.
 //
 
+import StoreKit
 import SwiftUI
 
 struct AccountView: View {
@@ -19,6 +20,7 @@ struct AccountView: View {
     @State private var confirmSignOut = false
     @State private var isDeleting = false
     @State private var deleteError: String?
+    @State private var showManageSubscriptions = false
 
     var body: some View {
         Form {
@@ -60,8 +62,15 @@ struct AccountView: View {
                             .font(.caption)
                             .foregroundStyle(Theme.red)
                     }
+                    if proStore.isPro {
+                        Button {
+                            showManageSubscriptions = true
+                        } label: {
+                            Label("Aboneliği Yönet", systemImage: "creditcard")
+                        }
+                    }
                 } footer: {
-                    Text("Hesabın ve sunucudaki tüm kayıtların kalıcı olarak silinir. Bu işlem geri alınamaz. Cihazındaki defter silinmez.")
+                    Text("Hesabın ve sunucudaki tüm kayıtların kalıcı olarak silinir. Bu işlem geri alınamaz. Cihazındaki defter silinmez.\n\nHesabı silmek aboneliği iptal etmez. Aktif bir aboneliğin varsa App Store'dan ayrıca iptal etmelisin.")
                 }
             }
         }
@@ -71,6 +80,7 @@ struct AccountView: View {
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showSignIn) { SignInView() }
         .sheet(isPresented: $showPaywall) { PaywallView() }
+        .manageSubscriptionsSheet(isPresented: $showManageSubscriptions)
         .confirmationDialog("Çıkış yapılsın mı? Defterin cihazda kalır.",
                             isPresented: $confirmSignOut, titleVisibility: .visible) {
             Button("Çıkış Yap", role: .destructive) {
@@ -78,7 +88,7 @@ struct AccountView: View {
             }
             Button("Vazgeç", role: .cancel) {}
         }
-        .confirmationDialog("Hesabın ve sunucudaki tüm kayıtların kalıcı olarak silinecek. Emin misin?",
+        .confirmationDialog("Hesabın ve sunucudaki tüm kayıtların kalıcı olarak silinecek. Aboneliğin varsa bu işlem onu iptal etmez. Emin misin?",
                             isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Hesabı Sil", role: .destructive) {
                 Task { await performDelete() }

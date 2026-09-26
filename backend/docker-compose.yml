@@ -14,6 +14,9 @@ services:
       NODE_ENV: production
       PORT: 4001
       APPLE_PRIVATE_KEY_PATH: /secrets/AuthKey.p8
+      # Apple ile Giriş anahtarı; APPLE_SIGNIN_KEY_ID .env'de verilince devreye girer.
+      APPLE_TEAM_ID: GHV7BT96W7
+      APPLE_SIGNIN_PRIVATE_KEY_PATH: /secrets/SignInKey.p8
     volumes:
       - ./secrets:/secrets:ro
     ports:

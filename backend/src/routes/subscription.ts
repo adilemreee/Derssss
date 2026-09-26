@@ -93,6 +93,20 @@ export async function subscriptionRoutes(app: FastifyInstance) {
     const expiresAt = tx.expiresDate ? new Date(tx.expiresDate) : null;
     const revokedAt = tx.revocationDate ? new Date(tx.revocationDate) : null;
 
+    // Girişliyken yapılan satın alma hesap kimliğiyle damgalıdır. Damga hâlâ
+    // var olan başka bir hesabı gösteriyorsa abonelik o hesabındır; ele geçen
+    // bir işlem kaydıyla başka hesaba taşınamaz. Damgasız işlemler (hesapsız
+    // satın alma) ve silinmiş hesaba ait damgalar aşağıdaki devir kuralına düşer.
+    const owner = tx.appAccountToken?.toLowerCase();
+    if (owner && owner !== userId.toLowerCase()) {
+      const ownerExists = await prisma.user.findUnique({ where: { id: owner }, select: { id: true } });
+      if (ownerExists) {
+        return reply
+          .code(409)
+          .send({ error: 'subscription_owned', message: 'Bu abonelik başka bir hesaba bağlı.' });
+      }
+    }
+
     // Aynı Apple aboneliği başka bir hesaba bağlıysa devret: kullanıcı hesabını
     // silip yeniden açtığında ya da Apple kimliğini değiştirdiğinde satın
     // aldığı abonelik kaybolmamalı.

@@ -70,12 +70,20 @@ final class AuthManager {
             var payload: [String: String] = ["identityToken": identityToken]
             if let currentNonce { payload["rawNonce"] = currentNonce }
             if !name.isEmpty { payload["fullName"] = name }
+            // Sunucu bu tek kullanımlık kodu Apple'da bir yenileme jetonuyla
+            // takas eder; hesap silindiğinde Apple girişini iptal etmek için
+            // o jeton gerekir (App Store yönergesi 5.1.1(v)).
+            if let codeData = credential.authorizationCode,
+               let code = String(data: codeData, encoding: .utf8) {
+                payload["authorizationCode"] = code
+            }
 
             do {
                 let response: SignInResponse = try await APIClient.shared
                     .requestPublic("/v1/auth/apple", body: payload)
                 await APIClient.shared.storeTokens(access: response.accessToken,
                                                    refresh: response.refreshToken)
+                await APIClient.shared.storeAccountID(response.user.id)
                 if let serverName = response.user.name ?? (name.isEmpty ? nil : name) {
                     displayName = serverName
                     UserDefaults.standard.set(serverName, forKey: "accountName")

@@ -56,6 +56,14 @@ final class SyncEngine {
 
     // MARK: - Ana akış
 
+    /// Eşitleme açıkken tekrarlayan dersler açılışta değil, sunucudaki güncel
+    /// hâl çekildikten sonra üretilir. Aksi halde bu cihaz, başka cihazın zaten
+    /// ürettiği ya da sildiği dersleri eski bilgiyle yeniden üretir.
+    func handlesRecurringLessons(isPro: Bool) async -> Bool {
+        guard isPro else { return false }
+        return await APIClient.shared.isSignedIn
+    }
+
     /// Eşitleme Pro'ya aittir ve hesap gerektirir.
     ///
     /// Abonelik sona erdiğinde eşitleme durur ama hiçbir şey silinmez: defter
@@ -79,11 +87,22 @@ final class SyncEngine {
         do {
             try await push(context: context)
             try await pull(context: context)
+            // Güncel hâl alındı; eksik tekrarlayan dersler artık güvenle
+            // üretilir ve hemen gönderilir.
+            RecurringLessons.topUp(context: context)
+            try await push(context: context)
             state.save()
             status = .synced(Date())
         } catch {
             let message = (error as? LocalizedError)?.errorDescription ?? "Eşitlenemedi."
             status = .failed(message)
+            // Bağlantı yoksa beklemek güvenli (dersler 4 hafta ileriye kadar
+            // üretilmiş durumda). Sunucu isteği reddettiyse ise eşitleme
+            // düzelene kadar cihaz kendi başına ders üretmeye devam etmeli.
+            if case APIError.offline = error {
+                return
+            }
+            RecurringLessons.topUp(context: context)
         }
     }
 

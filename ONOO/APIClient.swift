@@ -35,7 +35,7 @@ actor APIClient {
 
     /// Aynı anda birden çok istek 401 alırsa tek bir tazeleme yapılır;
     /// aksi halde tek kullanımlık yenileme jetonu yarışa girip iptal olur.
-    private var refreshTask: Task<Bool, Never>?
+    private var refreshTask: Task<Void, Error>?
 
     private init() {
         let cfg = URLSessionConfiguration.default
@@ -58,14 +58,25 @@ actor APIClient {
 
     var isSignedIn: Bool { refreshToken != nil }
 
+    /// Sunucudaki hesap kimliği. Satın almalara `appAccountToken` olarak
+    /// damgalanır; sunucu aboneliğin hangi hesaba ait olduğunu buradan bilir.
+    var accountID: UUID? {
+        Keychain.get("accountID").flatMap(UUID.init(uuidString:))
+    }
+
     func storeTokens(access: String, refresh: String) {
         accessToken = access
         refreshToken = refresh
     }
 
+    func storeAccountID(_ id: String) {
+        Keychain.set(id, for: "accountID")
+    }
+
     func clearTokens() {
         accessToken = nil
         refreshToken = nil
+        Keychain.remove("accountID")
     }
 
     // MARK: - İstekler
@@ -87,7 +98,10 @@ actor APIClient {
         do {
             return try await authorized(path, method: method, body: body, query: query)
         } catch APIError.unauthorized {
-            guard await refreshIfNeeded() else { throw APIError.unauthorized }
+            // Tazeleme geçici bir sebeple (bağlantı yok, sunucu yanıt vermedi)
+            // başarısız olursa o hata yukarı taşınır; oturum yalnızca sunucu
+            // yenileme jetonunu reddettiğinde kapanır.
+            try await refreshTokens()
             return try await authorized(path, method: method, body: body, query: query)
         }
     }
@@ -141,29 +155,27 @@ actor APIClient {
         }
     }
 
-    private func refreshIfNeeded() async -> Bool {
-        if let existing = refreshTask { return await existing.value }
+    private func refreshTokens() async throws {
+        if let existing = refreshTask { return try await existing.value }
 
         // Görev bu aktörün yalıtımını devraldığı için jeton erişimleri
         // doğrudan yapılır.
-        let task = Task<Bool, Never> { [self] in
-            guard let refresh = refreshToken else { return false }
+        let task = Task<Void, Error> { [self] in
+            guard let refresh = refreshToken else { throw APIError.unauthorized }
             do {
                 let result: TokenResponse = try await requestPublic(
                     "/v1/auth/refresh", body: ["refreshToken": refresh]
                 )
                 storeTokens(access: result.accessToken, refresh: result.refreshToken)
-                return true
-            } catch {
-                // Yenileme jetonu da geçersizse oturum gerçekten bitmiştir.
+            } catch APIError.unauthorized {
+                // Sunucu yenileme jetonunu reddetti: oturum gerçekten bitmiştir.
                 clearTokens()
-                return false
+                throw APIError.unauthorized
             }
         }
         refreshTask = task
-        let result = await task.value
-        refreshTask = nil
-        return result
+        defer { refreshTask = nil }
+        try await task.value
     }
 
     // MARK: - Kodlayıcılar

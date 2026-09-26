@@ -23,6 +23,14 @@ const schema = z.object({
   APPLE_PRIVATE_KEY_PATH: z.string().optional(),
   APPSTORE_ENVIRONMENT: z.enum(['Production', 'Sandbox']).default('Production'),
 
+  /// Apple ile Giriş REST API anahtarı (kod takası ve hesap silinirken iptal).
+  /// Satın alma anahtarından ayrıdır: Apple Developer → Keys altında
+  /// "Sign in with Apple" işaretlenerek üretilir. Boş bırakılırsa giriş yine
+  /// çalışır, yalnızca hesap silinirken Apple tarafındaki bağ koparılamaz.
+  APPLE_TEAM_ID: z.string().optional(),
+  APPLE_SIGNIN_KEY_ID: z.string().optional(),
+  APPLE_SIGNIN_PRIVATE_KEY_PATH: z.string().optional(),
+
   /// App Store Connect'te göstereceğin URL'ler bu sunucudan servis edilir.
   PUBLIC_BASE_URL: z.string().default('https://dersapi.adilemree.xyz'),
   SUPPORT_EMAIL: z.string().default('destek@adilemree.xyz'),

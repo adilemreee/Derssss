@@ -181,8 +181,10 @@ struct PaywallView: View {
                             Chip(text: "%\(percent) avantajlı", tint: Theme.green, filled: true)
                         }
                     }
-                    if isYearly, hasFreeTrial(product) {
-                        Text("İlk 7 gün ücretsiz")
+                    // Denemeden sonra ne ödeneceği denemeyle aynı yerde
+                    // yazmalı; yalnızca "ücretsiz" demek yanıltıcı sayılır.
+                    if let trial = freeTrial(product) {
+                        Text("İlk \(trialLength(trial)) ücretsiz, sonra \(product.displayPrice)/\(isYearly ? "yıl" : "ay")")
                             .font(.caption)
                             .foregroundStyle(Theme.green)
                     }
@@ -211,8 +213,23 @@ struct PaywallView: View {
         .buttonStyle(.plain)
     }
 
-    private func hasFreeTrial(_ product: Product) -> Bool {
-        product.subscription?.introductoryOffer?.paymentMode == .freeTrial
+    /// Ücretsiz deneme yalnızca kullanıcı hâlâ hak sahibiyse gösterilir.
+    private func freeTrial(_ product: Product) -> Product.SubscriptionOffer? {
+        guard store.isEligibleForTrial,
+              let offer = product.subscription?.introductoryOffer,
+              offer.paymentMode == .freeTrial else { return nil }
+        return offer
+    }
+
+    private func trialLength(_ offer: Product.SubscriptionOffer) -> String {
+        let n = offer.period.value
+        switch offer.period.unit {
+        case .day: return "\(n) gün"
+        case .week: return "\(n * 7) gün"
+        case .month: return "\(n) ay"
+        case .year: return "\(n) yıl"
+        @unknown default: return "deneme süresi"
+        }
     }
 
     // MARK: - Butonlar
@@ -246,8 +263,8 @@ struct PaywallView: View {
     }
 
     private var buttonTitle: String {
-        if let product = selectedProduct, hasFreeTrial(product) {
-            return "7 Gün Ücretsiz Dene"
+        if let product = selectedProduct, let trial = freeTrial(product) {
+            return "\(trialLength(trial).capitalized(with: Locale(identifier: "tr_TR"))) Ücretsiz Dene"
         }
         return "Pro'ya Geç"
     }
@@ -260,11 +277,22 @@ struct PaywallView: View {
         .tint(Theme.inkSoft)
     }
 
+    /// Otomatik yenilenen abonelikte satın alma ekranında koşullar ve gizlilik
+    /// bağlantısı bulunmalı (App Store yönergesi 3.1.2).
     private var legalNote: some View {
-        Text("Abonelik, dönem sonunda iptal edilmediği sürece otomatik yenilenir. İstediğin zaman App Store hesabından iptal edebilirsin. Mevcut verilerin abonelik durumundan bağımsız olarak sende kalır.")
-            .font(.caption2)
-            .foregroundStyle(Theme.inkSoft.opacity(0.8))
-            .multilineTextAlignment(.center)
+        VStack(spacing: 8) {
+            Text("Abonelik, dönem sonunda iptal edilmediği sürece otomatik yenilenir. İstediğin zaman App Store hesabından iptal edebilirsin. Mevcut verilerin abonelik durumundan bağımsız olarak sende kalır.")
+                .font(.caption2)
+                .foregroundStyle(Theme.inkSoft.opacity(0.8))
+                .multilineTextAlignment(.center)
+
+            HStack(spacing: 16) {
+                Link("Kullanım Koşulları", destination: URL(string: "https://dersdefteri.adilemree.xyz/kosullar")!)
+                Link("Gizlilik Politikası", destination: URL(string: "https://dersdefteri.adilemree.xyz/gizlilik")!)
+            }
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(Theme.board)
+        }
     }
 }
 

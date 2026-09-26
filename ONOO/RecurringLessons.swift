@@ -5,12 +5,28 @@
 //  Tekrarlayan ders şablonlarından ileri tarihli dersleri otomatik üretir.
 //
 
+import CryptoKit
 import Foundation
 import SwiftData
 
 enum RecurringLessons {
     /// Kaç gün ilerisi için ders üretilir
     static let horizonDays = 28
+
+    /// Şablondan üretilen dersin kimliği şablon ve saatten türetilir.
+    ///
+    /// Eşitlenen iki cihaz aynı şablondan aynı haftanın dersini birbirinden
+    /// habersiz üretirse, kimlik rastgele olsaydı sunucuda iki ayrı ders
+    /// oluşurdu. Türetilmiş kimlikle ikisi aynı kayda düşer.
+    static func lessonID(template: RecurringLessonTemplate, slot: Date) -> UUID {
+        let seed = "\(template.uuid.uuidString)|\(Int(slot.timeIntervalSince1970))"
+        var b = Array(SHA256.hash(data: Data(seed.utf8)).prefix(16))
+        // RFC 4122: ad tabanlı (sürüm 5) ve standart varyant bitleri
+        b[6] = (b[6] & 0x0F) | 0x50
+        b[8] = (b[8] & 0x3F) | 0x80
+        return UUID(uuid: (b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7],
+                           b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15]))
+    }
 
     /// Tüm şablonlar için ufka kadar eksik dersleri üretir.
     /// Uygulama açılışında ve şablon kaydedildiğinde çağrılır.
@@ -45,6 +61,7 @@ enum RecurringLessons {
                                     duration: template.duration,
                                     feeOverride: fee,
                                     usesCustomFee: template.usesCustomFee)
+                lesson.uuid = lessonID(template: template, slot: slot)
                 context.insert(lesson)
                 lesson.student = student
                 lesson.sourceTemplate = template

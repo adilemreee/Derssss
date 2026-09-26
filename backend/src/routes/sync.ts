@@ -1,7 +1,23 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../lib/auth.js';
+import { readEntitlement } from './subscription.js';
+
+/**
+ * Eşitleme Pro'ya aittir. Uygulama da bunu denetliyor, ama kilit yalnızca
+ * orada olursa değiştirilmiş bir istemci ya da aboneliği biten bir cihaz
+ * sunucuyu kullanmaya devam edebilir.
+ */
+async function requirePro(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const entitlement = await readEntitlement(request.userId!);
+  if (!entitlement.isPro) {
+    return reply.code(403).send({
+      error: 'subscription_required',
+      message: 'Eşitleme Ders Defteri Pro ile kullanılabilir.',
+    });
+  }
+}
 
 /**
  * Çekme imlecinde bilerek bırakılan geriye dönük pay.
@@ -142,7 +158,7 @@ export async function syncRoutes(app: FastifyInstance) {
    * Cihaz önce iter, sonra çeker. Böylece kendi değişiklikleri sunucuda
    * yerleşmeden önce sunucunun eski sürümüyle ezilmez.
    */
-  app.post('/v1/sync', { preHandler: requireAuth }, async (request, reply) => {
+  app.post('/v1/sync', { preHandler: [requireAuth, requirePro] }, async (request, reply) => {
     const parsed = pushBody.safeParse(request.body);
     if (!parsed.success) {
       return reply.code(400).send({
@@ -169,7 +185,7 @@ export async function syncRoutes(app: FastifyInstance) {
    * `since` sonrası değişen her şeyi döndürür. `since` verilmezse ilk kurulum
    * kabul edilir ve tüm kayıtlar gönderilir.
    */
-  app.get('/v1/sync', { preHandler: requireAuth }, async (request, reply) => {
+  app.get('/v1/sync', { preHandler: [requireAuth, requirePro] }, async (request, reply) => {
     const query = z.object({ since: z.coerce.date().optional() }).safeParse(request.query);
     if (!query.success) {
       return reply.code(400).send({ error: 'invalid_query', message: 'Geçersiz imleç.' });

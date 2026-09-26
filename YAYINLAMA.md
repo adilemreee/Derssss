@@ -5,6 +5,43 @@ hiçbiri koddan yapılamaz çünkü Apple hesabına giriş gerektirir.
 
 ---
 
+## 0. Acil — sızan anahtar (27 Eylül 2026)
+
+GitHub reposu herkese açıktı ve içinde In-App Purchase anahtarı
+(`SubscriptionKey_6F4RU5BV2K.p8`) ile `backend/.secrets-local/ro_pass` vardı.
+Dosyalar artık git tarafından izlenmiyor ve `.gitignore`'a eklendi, ama
+**git geçmişinde duruyorlar**.
+
+- [ ] App Store Connect → Kullanıcılar ve Erişim → Integrations → In-App
+      Purchase → `6F4RU5BV2K` anahtarını **iptal et**, yenisini üret ve
+      `backend/p8-yukle.sh` ile sunucuya kur.
+- [ ] `ro_pass`, Metabase'in "Ders Defteri" bağlantısının kullandığı
+      `dersdefteri_ro` (salt okunur) veritabanı kullanıcısının şifresi ve hâlâ
+      geçerli. Değiştir:
+      ```
+      ssh -i ~/.ssh/id_ed25519_sevgili root@92.5.38.182
+      docker exec -it sevgiliapp-postgres-1 sh -c 'psql -U "$POSTGRES_USER" -d postgres'
+      \password dersdefteri_ro
+      \q
+      ```
+      Ardından Metabase → Admin → Databases → Ders Defteri → şifre alanına
+      yenisini yaz → Save. (Veritabanı dışarıya açık değil, yalnızca sunucu
+      içinden erişilebiliyor; risk düşük ama şifre herkese açık oldu.)
+- [ ] GitHub'da repoyu **Private** yap (Settings → General → Danger Zone).
+      Commit'ler yerelde hazır; repo gizli olduktan sonra `git push`.
+
+**Sunucu güvenliği (tüm sunucuyu etkiler):** SSH şu an root için şifreyle
+girişe açık. Anahtarla girişin çalıştığı doğrulandı; şifreyi kapatmak için:
+```
+echo 'PermitRootLogin prohibit-password
+PasswordAuthentication no' > /etc/ssh/sshd_config.d/00-sertlestirme.conf
+sshd -t && systemctl reload ssh
+```
+Oturumu kapatmadan **yeni bir terminalden** anahtarla girebildiğini dene.
+Şifreyle girdiğin başka bir cihaz varsa (ör. telefondan) önce ona anahtar ekle.
+
+---
+
 ## 1. Apple Developer portalı
 
 **Certificates, Identifiers & Profiles → Identifiers → `adilemre.ONOOOO`**
@@ -13,6 +50,19 @@ hiçbiri koddan yapılamaz çünkü Apple hesabına giriş gerektirir.
       (Uygulama artık bunu kullanıyor; açık değilse giriş çalışmaz.)
 - [ ] iCloud, Push Notifications ve App Groups artık kullanılmıyor —
       işaretliyse kaldırabilirsin.
+
+**Keys → "+" → Sign in with Apple anahtarı** (hesap silinirken Apple girişini
+iptal etmek için; App Store yönergesi 5.1.1(v))
+
+- [ ] "Sign in with Apple" işaretle → Configure → birincil App ID olarak
+      `adilemre.ONOOOO` seç → kaydet ve `.p8` dosyasını indir.
+      (In-App Purchase anahtarından **farklı** bir anahtar.)
+- [ ] Sunucuya kur:
+      `scp -i ~/.ssh/id_ed25519_sevgili AuthKey_XXXXXXXXXX.p8 root@92.5.38.182:/opt/dersdefteri/secrets/SignInKey.p8`
+      ve `chmod 600` ile izinlerini daralt.
+- [ ] `/opt/dersdefteri/.env` içine `APPLE_SIGNIN_KEY_ID=XXXXXXXXXX` ekle
+      (Team ID ve dosya yolu `docker-compose.yml` içinde hazır).
+      Anahtar yoksa giriş yine çalışır; yalnızca silmede Apple tarafı iptal edilmez.
 
 (`.p8` anahtarı burada değil, App Store Connect'te üretilir — 2. adımın
 sonuna bak.)
@@ -178,6 +228,17 @@ zaten kullanan biri güncelledikten sonra cihazındaki kayıtlar duruyor ve giri
 yapınca sunucuya yükleniyor — fakat **başka bir cihazdaki** CloudKit verisi
 gelmiyor. Mevcut kullanıcın varsa bunu onlara duyur.
 
-**Yedekleme:** Yeni veritabanı `sevgiliapp` yedek betiğine dahil değil.
-`/opt/sevgiliapp/backup.sh` içine `dersdefteri` veritabanını da eklemek
-isteyebilirsin.
+**Yedekleme:** ✅ `dersdefteri` veritabanı 27 Eylül 2026'dan beri
+`/root/veritabani-yedek.sh` ile her gece 00:30'da yedekleniyor
+(`/opt/backups/veritabani/<tarih>/dersdefteri.dump`, pg_restore ile doğrulanır,
+Backrest üzerinden Google Drive'a gider, 3 gün saklanır).
+
+**27 Eylül 2026 kurulumu:** Apple girişi iptali, eşitlemenin sunucuda Pro'ya
+bağlanması, aboneliğin hesaba damgalanması ve istek sınırı düzeltmesi canlıda.
+Geri dönmek gerekirse kurulum öncesi hâl `/opt/backups/dersdefteri-deploy/`
+altında (veritabanı dökümü + klasör kopyası) ve eski imaj
+`dersdefteri-api:pre-20260926-223424` etiketiyle duruyor.
+
+**Sunucu eşitlemeyi de Pro'ya bağlar.** `/v1/sync` artık abonelik yoksa
+`403 subscription_required` döner; aboneliği sunucuya bildiren sürümle
+(uygulama giriş anında cihazdaki satın almayı gönderiyor) birlikte yayınla.

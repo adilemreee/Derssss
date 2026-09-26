@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
-import { createRemoteJWKSet, jwtVerify } from 'jose';
+import fs from 'node:fs';
+import { createRemoteJWKSet, importPKCS8, jwtVerify, SignJWT } from 'jose';
 import { config } from '../config.js';
 
 const APPLE_ISSUER = 'https://appleid.apple.com';
@@ -56,4 +57,81 @@ export async function verifyAppleIdentityToken(
     emailVerified: emailVerifiedClaim === true || emailVerifiedClaim === 'true',
     isPrivateEmail: privateEmailClaim === true || privateEmailClaim === 'true',
   };
+}
+
+// MARK: - Apple ile Giriş REST API
+
+/**
+ * Hesap silinirken Apple girişinin de iptal edilmesi gerekir (App Store
+ * yönergesi 5.1.1(v)); aksi halde kullanıcı iPhone Ayarlar'ında uygulamayı
+ * hâlâ bağlı görür. İptal için Apple'ın verdiği yenileme jetonu lazım; o da
+ * yalnızca girişteki tek kullanımlık yetki kodu takas edilerek alınır.
+ */
+function signInKeyPath(): string | null {
+  const { APPLE_TEAM_ID, APPLE_SIGNIN_KEY_ID, APPLE_SIGNIN_PRIVATE_KEY_PATH } = config;
+  if (!APPLE_TEAM_ID || !APPLE_SIGNIN_KEY_ID || !APPLE_SIGNIN_PRIVATE_KEY_PATH) return null;
+  if (!fs.existsSync(APPLE_SIGNIN_PRIVATE_KEY_PATH)) {
+    console.warn('[apple] Sign in with Apple anahtarı bulunamadı:', APPLE_SIGNIN_PRIVATE_KEY_PATH);
+    return null;
+  }
+  return APPLE_SIGNIN_PRIVATE_KEY_PATH;
+}
+
+let signingKey: ReturnType<typeof importPKCS8> | null = null;
+
+/// Apple'ın istemci sırrı: anahtarla imzalanmış kısa ömürlü bir JWT.
+async function clientSecret(keyPath: string): Promise<string> {
+  signingKey ??= importPKCS8(fs.readFileSync(keyPath, 'utf8'), 'ES256');
+  return new SignJWT({})
+    .setProtectedHeader({ alg: 'ES256', kid: config.APPLE_SIGNIN_KEY_ID! })
+    .setIssuer(config.APPLE_TEAM_ID!)
+    .setSubject(config.APPLE_BUNDLE_ID)
+    .setAudience(APPLE_ISSUER)
+    .setIssuedAt()
+    .setExpirationTime('5m')
+    .sign(await signingKey);
+}
+
+async function postForm(endpoint: string, fields: Record<string, string>): Promise<Response> {
+  return fetch(`${APPLE_ISSUER}${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams(fields),
+    signal: AbortSignal.timeout(10_000),
+  });
+}
+
+/// Yetki kodunu Apple'ın yenileme jetonuyla takas eder. Anahtar
+/// yapılandırılmamışsa `null` döner.
+export async function exchangeAuthorizationCode(code: string): Promise<string | null> {
+  const keyPath = signInKeyPath();
+  if (!keyPath) return null;
+
+  const res = await postForm('/auth/token', {
+    client_id: config.APPLE_BUNDLE_ID,
+    client_secret: await clientSecret(keyPath),
+    code,
+    grant_type: 'authorization_code',
+  });
+  if (!res.ok) {
+    throw new Error(`Apple kod takası başarısız: ${res.status} ${await res.text()}`);
+  }
+  const body = (await res.json()) as { refresh_token?: string };
+  return body.refresh_token ?? null;
+}
+
+/// Kullanıcının Apple girişini bu uygulama için iptal eder.
+export async function revokeAppleToken(refreshToken: string): Promise<void> {
+  const keyPath = signInKeyPath();
+  if (!keyPath) return;
+
+  const res = await postForm('/auth/revoke', {
+    client_id: config.APPLE_BUNDLE_ID,
+    client_secret: await clientSecret(keyPath),
+    token: refreshToken,
+    token_type_hint: 'refresh_token',
+  });
+  if (!res.ok) {
+    throw new Error(`Apple jetonu iptal edilemedi: ${res.status} ${await res.text()}`);
+  }
 }

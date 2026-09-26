@@ -61,9 +61,20 @@ struct OneApp: App {
                 }
             }
             .task(id: auth.state) {
-                guard auth.state == .signedIn else { return }
-                await proStore.refreshFromServer()
-                await sync.sync(isPro: proStore.isPro)
+                switch auth.state {
+                case .signedIn:
+                    // Önce cihazdaki satın alma sunucuya bildirilir: hesapsızken
+                    // abone olup sonra giriş yapan kullanıcıyı sunucu ancak
+                    // böyle tanır. Eşitleme sunucunun onayını beklediği için
+                    // sıra önemlidir.
+                    await proStore.refreshEntitlements()
+                    await proStore.refreshFromServer()
+                    await sync.sync(isPro: proStore.isPro)
+                case .signedOut:
+                    proStore.clearServerState()
+                case .checking:
+                    break
+                }
             }
             .environment(proStore)
             .environment(auth)

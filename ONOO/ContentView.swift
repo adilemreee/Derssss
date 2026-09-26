@@ -8,6 +8,7 @@ import SwiftData
 
 struct ContentView: View {
     @Environment(\.modelContext) private var context
+    @Environment(ProStore.self) private var proStore
     @AppStorage("didMigrateLockedLessonFeesV1") private var didMigrateLockedLessonFees = false
     @State private var resyncTask: Task<Void, Never>?
 
@@ -36,7 +37,11 @@ struct ContentView: View {
                 LessonFeeMigration.lockExistingFees(context: context)
                 didMigrateLockedLessonFees = true
             }
-            RecurringLessons.topUp(context: context)
+            // Eşitleme açıksa bu işi eşitleme motoru, sunucudan güncel hâli
+            // aldıktan sonra yapar.
+            if !(await SyncEngine.shared.handlesRecurringLessons(isPro: proStore.isPro)) {
+                RecurringLessons.topUp(context: context)
+            }
             await AppNotifications.requestPermissionIfNeeded()
             await AppNotifications.resync(context: context)
 

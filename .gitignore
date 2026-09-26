@@ -1,0 +1,17 @@
+# Gizli anahtarlar ve şifreler hiçbir zaman repoya girmemeli.
+*.p8
+.env
+.env.*
+!.env.example
+.secrets-local/
+backend/secrets/
+
+# Bağımlılıklar ve derleme çıktıları
+node_modules/
+backend/dist/
+DerivedData/
+build/
+*.xcuserstate
+xcuserdata/
+
+.DS_Store

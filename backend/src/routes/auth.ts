@@ -1,7 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
-import { verifyAppleIdentityToken } from '../lib/appleAuth.js';
+import {
+  exchangeAuthorizationCode,
+  revokeAppleToken,
+  verifyAppleIdentityToken,
+} from '../lib/appleAuth.js';
 import {
   accessTokenTTL,
   consumeRefreshToken,
@@ -16,6 +20,8 @@ const appleSignInBody = z.object({
   rawNonce: z.string().optional(),
   /// Apple tam adı yalnızca ilk girişte gönderir; sonraki girişlerde gelmez.
   fullName: z.string().max(120).optional(),
+  /// Tek kullanımlık yetki kodu; hesap silinirken iptal için takas edilir.
+  authorizationCode: z.string().max(1000).optional(),
 });
 
 const refreshBody = z.object({
@@ -54,6 +60,19 @@ export async function authRoutes(app: FastifyInstance) {
         ...(parsed.data.fullName ? { name: parsed.data.fullName } : {}),
       },
     });
+
+    // Takas başarısız olursa giriş yine tamamlanır; yalnızca hesap silinirken
+    // Apple tarafındaki iptal yapılamaz. Bir sonraki girişte yeniden denenir.
+    if (parsed.data.authorizationCode) {
+      try {
+        const appleRefreshToken = await exchangeAuthorizationCode(parsed.data.authorizationCode);
+        if (appleRefreshToken) {
+          await prisma.user.update({ where: { id: user.id }, data: { appleRefreshToken } });
+        }
+      } catch (err) {
+        request.log.warn({ err }, 'apple yetki kodu takas edilemedi');
+      }
+    }
 
     const refreshToken = await issueRefreshToken(user.id);
     return reply.send({
@@ -112,8 +131,19 @@ export async function authRoutes(app: FastifyInstance) {
    */
   app.delete('/v1/account', { preHandler: requireAuth }, async (request, reply) => {
     const userId = request.userId!;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { appleRefreshToken: true },
+    });
     await prisma.user.delete({ where: { id: userId } }).catch(() => undefined);
     await revokeAllRefreshTokens(userId);
+
+    // Veriler zaten silindi; Apple'a ulaşılamaması silmeyi başarısız saymaz.
+    if (user?.appleRefreshToken) {
+      await revokeAppleToken(user.appleRefreshToken).catch((err) => {
+        request.log.warn({ err }, 'apple girişi iptal edilemedi');
+      });
+    }
     return reply.send({ ok: true });
   });
 }

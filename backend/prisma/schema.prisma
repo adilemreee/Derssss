@@ -24,6 +24,9 @@ model User {
   appleSub      String    @unique
   email         String?
   name          String?
+  /// Apple'ın verdiği yenileme jetonu. Yalnızca hesap silinirken Apple
+  /// girişini iptal etmek için saklanır; oturum için kullanılmaz.
+  appleRefreshToken String?
   createdAt     DateTime  @default(now())
   lastSeenAt    DateTime  @default(now())
 
