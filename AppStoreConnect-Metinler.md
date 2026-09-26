@@ -150,14 +150,18 @@ TEST HESABI GEREKMİYOR
 Uygulama hesap açmadan tam olarak kullanılabilir. Açılışta giriş ekranı yoktur;
 doğrudan deftere girilir ve tüm temel özellikler hesapsız çalışır.
 
-Hesap yalnızca cihazlar arası eşitleme için gereklidir ve Apple ile Giriş
-kullanılır, bu yüzden ayrıca kullanıcı adı/parola sağlanamaz. İncelemede
-eşitlemeyi denemek isterseniz herhangi bir Apple Kimliği ile giriş
-yapabilirsiniz: Ayarlar > Eşitleme ve Hesap > Apple ile Giriş Yap.
+Hesap yalnızca cihazlar arası eşitleme için gereklidir; eşitleme Pro
+aboneliğine ait olduğu için giriş seçeneği abonelik olmadan görünmez.
+Apple ile Giriş kullanılır, bu yüzden ayrıca kullanıcı adı/parola sağlanamaz.
+Eşitlemeyi ve hesap silmeyi denemek için:
+1. Özet > sağ üst menü > Ayarlar > Eşitleme ve Hesap > Eşitlemeyi Aç
+2. Sandbox hesabıyla herhangi bir planı satın alın
+3. Aynı ekranda "Apple ile Giriş Yap" görünür; herhangi bir Apple Kimliği ile giriş yapın
 
 HESAP SİLME (Guideline 5.1.1(v))
-Ayarlar > Eşitleme ve Hesap > Hesabı Sil
-Bu işlem sunucudaki hesabı ve tüm kayıtları kalıcı olarak siler.
+Giriş yaptıktan sonra: Ayarlar > Eşitleme ve Hesap > Hesabı Sil
+Bu işlem sunucudaki hesabı ve tüm kayıtları kalıcı olarak siler ve
+Apple ile Giriş yetkisini iptal eder.
 
 ABONELİK
 Ders Defteri Pro aylık (dersdefteri.pro.monthly) ve yıllık (dersdefteri.pro.yearly) olarak
