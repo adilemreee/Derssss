@@ -79,6 +79,13 @@ sonuna bak.)
 
 **Abonelikler → yeni abonelik grubu: "Ders Defteri Pro"**
 
+> ⚠️ Sol menüde **Monetization → Subscriptions** altında, tür olarak
+> **Auto-Renewable Subscription** oluşturulmalı; **In-App Purchases** altında
+> DEĞİL. İlk denemede ürünler yanlışlıkla In-App Purchases altında
+> (`dersdefteri.pro.monthly` / `.yearly`) açıldı; Apple silinen ürün
+> kimliklerini tekrar kullandırmadığı için kimlikler aşağıdaki yenileriyle
+> değiştirildi (27 Eylül 2026). Eski iki ürünü incelemeden çıkar ve sil.
+
 > `One.storekit` dosyası **yalnızca yerel testler içindir** ve App Store
 > Connect'e hiçbir şey göndermez. Senkronizasyon tek yönlüdür: App Store
 > Connect → Xcode. Yani aşağıdaki ürünleri App Store Connect'te elle
@@ -89,7 +96,7 @@ yoksa uygulama ürünleri bulamaz ve paywall boş açılır.
 
 | Alan | Aylık | Yıllık |
 |---|---|---|
-| Ürün Kimliği | `dersdefteri.pro.monthly` | `dersdefteri.pro.yearly` |
+| Ürün Kimliği | `dersdefteri.abonelik.aylik` | `dersdefteri.abonelik.yillik` |
 | Referans adı | Pro Aylık | Pro Yıllık |
 | Süre | 1 ay | 1 yıl |
 | Fiyat | ₺79,99 | ₺599,99 |

@@ -190,7 +190,7 @@ data is stored on the device.
 - Homework tab (Ödevler) -> "+" to assign homework.
 
 In-app purchase - Ders Defteri Pro (auto-renewable subscription):
-- Monthly: dersdefteri.pro.monthly; Yearly: dersdefteri.pro.yearly with a
+- Monthly: dersdefteri.abonelik.aylik; Yearly: dersdefteri.abonelik.yillik with a
   1-week free trial for eligible users.
 - Pro unlocks: sync across devices with an account, unlimited students
   (free: 2), unlimited recurring lesson templates (free: 1), PDF parent
@@ -289,7 +289,9 @@ Ders hatırlatmaları, otomatik bakiye hesabı ve tekrarlayan ders şablonlarıy
 
 ## Abonelik ürünü sayfası (her iki ürün için)
 
-App Store Connect → Distribution → In-App Purchases → ürünü aç.
+App Store Connect → Distribution → sol menü **Monetization → Subscriptions**
+→ "Ders Defteri Pro" grubu → ürünü aç. (**In-App Purchases** altında değil;
+orası tek seferlik satın almalar içindir.)
 
 ### Image (Optional)
 

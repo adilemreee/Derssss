@@ -11,8 +11,8 @@ import StoreKit
 @MainActor
 @Observable
 final class ProStore {
-    static let monthlyID = "dersdefteri.pro.monthly"
-    static let yearlyID = "dersdefteri.pro.yearly"
+    static let monthlyID = "dersdefteri.abonelik.aylik"
+    static let yearlyID = "dersdefteri.abonelik.yillik"
     static let productIDs: Set<String> = [monthlyID, yearlyID]
 
     /// Ücretsiz sürümde izin verilen aktif öğrenci sayısı
