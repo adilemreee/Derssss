@@ -228,10 +228,18 @@ zaten kullanan biri güncelledikten sonra cihazındaki kayıtlar duruyor ve giri
 yapınca sunucuya yükleniyor — fakat **başka bir cihazdaki** CloudKit verisi
 gelmiyor. Mevcut kullanıcın varsa bunu onlara duyur.
 
-**Yedekleme:** ✅ `dersdefteri` veritabanı 27 Eylül 2026'dan beri
-`/root/veritabani-yedek.sh` ile her gece 00:30'da yedekleniyor
-(`/opt/backups/veritabani/<tarih>/dersdefteri.dump`, pg_restore ile doğrulanır,
-Backrest üzerinden Google Drive'a gider, 3 gün saklanır).
+**Yedekleme:** ✅ sevgiliapp ile aynı yapıda, kendi betiğiyle:
+[`backend/backup.sh`](backend/backup.sh) → sunucuda `/opt/dersdefteri/backup.sh`,
+her gece 03:05 TSİ (00:05 UTC). Veritabanı dökümü (pg_restore ile doğrulanır)
+ve `.env` + `secrets/` alınır, `/opt/backups/dersdefteri/` altında 2 gün
+saklanır, sonuç ntfy ile bildirilir. Redis ayrıca alınmaz; aynı container
+sevgiliapp yedeğinde var.
+
+**Dikkat — Google Drive'a hiçbir yedek gitmiyor:** Backrest'in `kritik` ve
+`sistem` planlarının zamanlaması kapalı (`disabled`), nöbetçi cron'u da
+`#KAPALI#`. Yani sevgiliapp dahil bütün yedekler yalnızca bu sunucuda duruyor;
+sunucu giderse yedekler de gider. Açmak için Backrest arayüzünde iki planın
+Schedule ayarını aç ve crontab'daki nöbetçi satırının başındaki `#KAPALI#`'yı kaldır.
 
 **27 Eylül 2026 kurulumu:** Apple girişi iptali, eşitlemenin sunucuda Pro'ya
 bağlanması, aboneliğin hesaba damgalanması ve istek sınırı düzeltmesi canlıda.
