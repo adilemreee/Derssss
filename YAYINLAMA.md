@@ -54,15 +54,16 @@ Oturumu kapatmadan **yeni bir terminalden** anahtarla girebildiğini dene.
 **Keys → "+" → Sign in with Apple anahtarı** (hesap silinirken Apple girişini
 iptal etmek için; App Store yönergesi 5.1.1(v))
 
-- [ ] "Sign in with Apple" işaretle → Configure → birincil App ID olarak
-      `adilemre.ONOOOO` seç → kaydet ve `.p8` dosyasını indir.
-      (In-App Purchase anahtarından **farklı** bir anahtar.)
-- [ ] Sunucuya kur:
-      `scp -i ~/.ssh/id_ed25519_sevgili AuthKey_XXXXXXXXXX.p8 root@92.5.38.182:/opt/dersdefteri/secrets/SignInKey.p8`
-      ve `chmod 600` ile izinlerini daralt.
-- [ ] `/opt/dersdefteri/.env` içine `APPLE_SIGNIN_KEY_ID=XXXXXXXXXX` ekle
-      (Team ID ve dosya yolu `docker-compose.yml` içinde hazır).
-      Anahtar yoksa giriş yine çalışır; yalnızca silmede Apple tarafı iptal edilmez.
+- [x] Anahtar üretildi: Key ID `V6Q9Q2K4JU`.
+- [x] Sunucuya kuruldu (27 Eylül 2026): `/opt/dersdefteri/secrets/SignInKey.p8`
+      (600), `.env` içinde `APPLE_SIGNIN_KEY_ID=V6Q9Q2K4JU`. Anahtar yükleniyor
+      ve Apple'a imzalı istek gidiyor.
+- [ ] İlk gerçek girişten sonra doğrula (TestFlight'ta Apple ile giriş yap):
+      ```
+      ssh -i ~/.ssh/id_ed25519_sevgili root@92.5.38.182 "docker logs dersdefteri-api --since 1h 2>&1 | grep -i 'takas edilemedi' || echo 'takas hatası yok'"
+      ```
+      `invalid_client` görürsen anahtar `adilemre.ONOOOO` App ID'sine bağlı
+      değildir (Keys → anahtar → Configure → birincil App ID).
 
 (`.p8` anahtarı burada değil, App Store Connect'te üretilir — 2. adımın
 sonuna bak.)
