@@ -143,46 +143,136 @@ kendisi kuruyor. Toplam 20 benzersiz terim indeksleniyor.
 
 ## Notes (App Review Notes)
 
+Apple 2.1 "Information Needed" ile bu yedi maddeyi istedi. Aşağıdaki metin
+**hem** App Review'a verilecek yanıta (App Store Connect → uygulama → App Review
+mesajı → Reply) **hem de** App Review Information → Notes alanına yapıştırılır.
+Köşeli parantezli iki yeri (cihaz listesi) kendi cihazlarınla doldur, ekran
+kaydını yanıta ekle (aşağıda "Ekran kaydı senaryosu").
+
 ```
-Uygulama Türkçedir ve Türkiye'deki özel ders veren öğretmenlere yöneliktir.
+Thank you for the review. Please find the requested information below.
 
-TEST HESABI GEREKMİYOR
-Uygulama hesap açmadan tam olarak kullanılabilir. Açılışta giriş ekranı yoktur;
-doğrudan deftere girilir ve tüm temel özellikler hesapsız çalışır.
+1. SCREEN RECORDING
+A screen recording captured on a physical device running the latest iOS is
+attached to this reply. It starts from launching the app and shows the core
+features, the notification permission prompt, the subscription purchase,
+Sign in with Apple and account deletion.
 
-Hesap yalnızca cihazlar arası eşitleme için gereklidir; eşitleme Pro
-aboneliğine ait olduğu için giriş seçeneği abonelik olmadan görünmez.
-Apple ile Giriş kullanılır, bu yüzden ayrıca kullanıcı adı/parola sağlanamaz.
-Eşitlemeyi ve hesap silmeyi denemek için:
-1. Özet > sağ üst menü > Ayarlar > Eşitleme ve Hesap > Eşitlemeyi Aç
-2. Sandbox hesabıyla herhangi bir planı satın alın
-3. Aynı ekranda "Apple ile Giriş Yap" görünür; herhangi bir Apple Kimliği ile giriş yapın
+2. DEVICES AND OPERATING SYSTEMS TESTED
+- [iPhone model] - iOS [version]
+- [iPad model, if tested] - iPadOS [version]
 
-HESAP SİLME (Guideline 5.1.1(v))
-Giriş yaptıktan sonra: Ayarlar > Eşitleme ve Hesap > Hesabı Sil
-Bu işlem sunucudaki hesabı ve tüm kayıtları kalıcı olarak siler ve
-Apple ile Giriş yetkisini iptal eder.
+3. WHAT THE APP DOES AND WHO IT IS FOR
+Ders Defteri ("Lesson Notebook") is a Turkish-language planner for private
+tutors in Turkey who give one-to-one lessons. Tutors usually track their
+students, lesson times, fees and who has paid in paper notebooks or
+spreadsheets. The app replaces that notebook:
+- Students: profiles with subject, grade, hourly rate and parent contact.
+- Schedule: weekly and monthly calendar, recurring weekly lessons, marking
+  lessons as completed or cancelled (with a reason).
+- Payments: records the payments a tutor receives from students (cash or bank
+  transfer) and shows each student's outstanding balance. The app does not
+  process or transfer money; it is a record-keeping tool only.
+- Homework: homework with due dates and local reminders.
+- Sharing: the tutor can send a lesson summary or a payment reminder to a
+  parent through their own WhatsApp, Messages or Phone app.
+The value: a tutor sees their day, weekly workload, monthly income and unpaid
+balances at a glance, without paperwork.
 
-ABONELİK
-Ders Defteri Pro aylık (dersdefteri.pro.monthly) ve yıllık (dersdefteri.pro.yearly) olarak
-sunulur. Yıllık planda 1 hafta ücretsiz deneme vardır. Satın alma Sandbox
-ortamında test edilebilir. Abonelik doğrulaması sunucu tarafında, App Store
-Server API ile imzalı işlem üzerinden yapılır.
+4. HOW TO ACCESS THE MAIN FEATURES
+No login or demo account is needed. After a short onboarding the app opens
+directly into the notebook and all core features work without an account;
+data is stored on the device.
+- Summary tab (Özet) -> "İlk Öğrencini Ekle" to add a student.
+- Schedule tab (Program) -> "+" to add a lesson; tap the check mark to mark
+  it as completed.
+- Payments tab (Ödemeler) -> "+" to record a payment.
+- Homework tab (Ödevler) -> "+" to assign homework.
 
-Paywall'a erişim: Ayarlar > Ders Defteri Pro'ya Geç
+In-app purchase - Ders Defteri Pro (auto-renewable subscription):
+- Monthly: dersdefteri.pro.monthly; Yearly: dersdefteri.pro.yearly with a
+  1-week free trial for eligible users.
+- Pro unlocks: sync across devices with an account, unlimited students
+  (free: 2), unlimited recurring lesson templates (free: 1), PDF parent
+  report, daily schedule summary notification and CSV export.
+- Paywall: Summary tab -> top-right menu -> Ayarlar -> "Ders Defteri Pro'ya
+  Geç". It also opens when adding a third student. The paywall shows each
+  plan's title, length and price, a Restore Purchases button and links to the
+  Terms of Use and Privacy Policy.
 
-ÜCRETSİZ SÜRÜM SINIRI
-Ücretsiz sürümde 2 aktif öğrenci ve 1 tekrarlayan ders şablonu eklenebilir.
-Sınıra ulaşıldığında paywall açılır. Mevcut kayıtlar her durumda görüntülenmeye
-devam eder; abonelik bittiğinde hiçbir veri silinmez.
+Account (only needed for Pro sync):
+- Sign in with Apple is the only sign-in method, so no username/password can
+  be provided; any Apple ID works.
+- Ayarlar -> "Eşitleme ve Hesap" -> "Eşitlemeyi Aç" -> purchase a plan with a
+  Sandbox account -> "Apple ile Giriş Yap" appears on the same screen.
+- Account deletion: Ayarlar -> "Eşitleme ve Hesap" -> "Hesabı Sil". This
+  permanently deletes the account and all server-side data and revokes the
+  Sign in with Apple authorization. The notebook on the device is kept.
 
-BİLDİRİMLER
-Uygulama yalnızca yerel bildirim kullanır (ders ve ödev hatırlatmaları).
-Uzak bildirim (APNs) kullanılmaz.
+Permissions: the only system prompt is for notifications (local lesson and
+homework reminders), shown on first launch. The app does not request
+location, contacts, camera, photos or tracking. There is no user-generated
+content shared between users and no social features, so content reporting
+and blocking are not applicable.
 
-İLETİŞİM
-destek@adilemree.xyz
+5. EXTERNAL SERVICES
+- Sign in with Apple: authentication (optional, for sync only).
+- Apple In-App Purchase (StoreKit 2) and App Store Server Notifications:
+  subscriptions.
+- Our own backend server (https://dersapi.adilemree.xyz; Node.js, PostgreSQL,
+  Redis; self-hosted, reached through Cloudflare): stores the account, the
+  synced notebook of Pro users and their subscription status. It also serves
+  the privacy policy, terms of use and support pages.
+- WhatsApp, Messages and Phone are opened only when the tutor taps a share
+  or call button; the app itself does not send data to these services.
+- No third-party SDKs, analytics, advertising, AI services or external
+  payment processors are used.
+
+6. REGIONAL DIFFERENCES
+The app works the same in all regions. The interface is in Turkish only and
+amounts are shown in Turkish lira because the audience is tutors in Turkey.
+Subscription prices are shown by the App Store in the local currency.
+
+7. REGULATED INDUSTRY / PROTECTED MATERIAL
+Not applicable. The app is a personal record-keeping tool. It does not
+provide financial, medical or legal services, does not move money and does
+not contain protected third-party material.
+
+Contact: destek@adilemree.xyz
 ```
+
+### Ekran kaydı senaryosu (Apple'ın 1. maddesi)
+
+Gerçek bir iPhone'da, en güncel iOS ile, TestFlight'taki son build ile çek.
+TestFlight'ta satın almalar ücretsizdir; ayrı Sandbox hesabı gerekmez.
+
+**Hazırlık**
+- Daha önce test ettiysen önce Ayarlar → Eşitleme ve Hesap → **Hesabı Sil**
+  (giriş bilgileri uygulama silinse de iPhone anahtar zincirinde kalır).
+- Pro zaten açıksa satın alma adımı görünmez: iPhone Ayarlar → Apple Hesabı →
+  Abonelikler'den iptal edip süresinin bitmesini bekle ya da abone olmamış
+  başka bir Apple Kimliği / cihaz kullan.
+- Uygulamayı sil ve TestFlight'tan yeniden yükle (tanıtım ekranı ve bildirim
+  izni baştan görünsün).
+- Kontrol Merkezi'ne Ekran Kaydı'nı ekle; mikrofon kapalı olabilir.
+
+**Kayıt (yaklaşık 3 dakika, kayıt uygulama açılmadan başlamalı)**
+1. Ana ekrandan uygulamayı aç → açılış → tanıtım sayfaları → adını yaz → Başla.
+2. Bildirim izni sorulunca **İzin Ver**.
+3. Özet → İlk Öğrencini Ekle → ad, ders, sınıf, saatlik ücret, veli telefonu → Kaydet.
+4. Program → + → ders ekle → yeşil tik ile "İşlendi" yap.
+5. Ödemeler → öğrencinin bakiyesini göster → Ödeme Al → kaydet.
+6. Ödevler → + → ödev ver.
+7. Öğrenci detayı → Hatırlat'a dokunup mesaj önizlemesini göster (göndermeden kapat).
+8. Öğrenciler → + ile 2 öğrenci daha eklemeye çalış → paywall açılır. Planları,
+   fiyatları, deneme metnini ve Koşullar / Gizlilik bağlantılarını birkaç saniye göster.
+9. Yıllık planı seç → satın al → App Store onayı → Pro açılır.
+10. Ayarlar → Eşitleme ve Hesap → **Apple ile Giriş Yap** → giriş → Şimdi Eşitle.
+11. Aynı ekranda **Hesabı Sil** → onayla → giriş seçeneğinin geri geldiğini göster.
+12. Uygulamayı kapat, kaydı bitir.
+
+Video büyükse App Review yanıtına ek olarak yüklenemeyebilir; o zaman iCloud
+Drive / Google Drive paylaşım bağlantısını (herkese açık görüntüleme) yanıta ekle.
 
 ---
 
