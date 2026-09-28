@@ -41,6 +41,8 @@ struct StudentDetailView: View {
     @State private var showPaywall = false
     @State private var editingPayment: Payment?
     @State private var pendingPaymentDelete: Payment?
+    @State private var editingPackage: LessonPackage?
+    @State private var showPackageForm = false
 
     var body: some View {
         ScrollView {
@@ -49,6 +51,13 @@ struct StudentDetailView: View {
                 // eskiden beş bloğun altında, ekranın ancak sonunda başlıyordu.
                 header
                 balanceBanner
+                if let package = student.currentPackage {
+                    PackageCard(student: student, package: package) {
+                        editingPackage = package
+                    } onNew: {
+                        showPackageForm = true
+                    }
+                }
                 Picker("Bölüm", selection: $tab) {
                     ForEach(DetailTab.allCases, id: \.self) { t in
                         Text(t.rawValue).tag(t)
@@ -75,6 +84,7 @@ struct StudentDetailView: View {
                 Menu {
                     Button { showLessonForm = true } label: { Label("Ders Ekle", systemImage: "calendar.badge.plus") }
                     Button { showPaymentForm = true } label: { Label("Ödeme Al", systemImage: "turkishlirasign.circle") }
+                    Button { showPackageForm = true } label: { Label("Ders Paketi Ekle", systemImage: "shippingbox") }
                     Button { showHomeworkForm = true } label: { Label("Ödev Ver", systemImage: "book") }
                     Divider()
                     Button {
@@ -117,6 +127,12 @@ struct StudentDetailView: View {
         }
         .sheet(item: $editingPayment) { payment in
             PaymentFormView(payment: payment)
+        }
+        .sheet(item: $editingPackage) { package in
+            PackageFormView(student: student, package: package)
+        }
+        .sheet(isPresented: $showPackageForm) {
+            PackageFormView(student: student)
         }
         .sheet(isPresented: $showPaywall) { PaywallView() }
         .studentArchiveDialog($archiveTarget, context: context, onArchived: { dismiss() })
@@ -463,6 +479,14 @@ struct StudentDetailView: View {
 
     private var paymentsTab: some View {
         VStack(spacing: 10) {
+            if !student.allPackages.isEmpty {
+                ForEach(student.allPackages.reversed()) { package in
+                    PackageRow(package: package)
+                        .contentShape(Rectangle())
+                        .onTapGesture { editingPackage = package }
+                }
+                Divider().padding(.vertical, 4)
+            }
             if sortedPayments.isEmpty {
                 EmptyStateView(icon: "turkishlirasign.circle", title: "Ödeme kaydı yok",
                                actionTitle: "Ödeme Al", action: { showPaymentForm = true })

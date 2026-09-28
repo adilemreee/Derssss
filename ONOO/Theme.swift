@@ -102,6 +102,14 @@ enum Fmt {
     static let time = make("HH:mm")
     static let dayMonth = make("d MMMM")
     static let dayMonthShort = make("d MMM")
+    private static let dayMonthYearShortFormatter = make("d MMM yyyy")
+
+    /// Bu yıl içindeyse "12 Mar", değilse "12 Mar 2025".
+    static func dayMonthYearShort(_ date: Date) -> String {
+        Calendar.tr.isDate(date, equalTo: Date(), toGranularity: .year)
+            ? dayMonthShort.string(from: date)
+            : dayMonthYearShortFormatter.string(from: date)
+    }
     static let weekday = make("EEEE")
     static let weekdayShort = make("EEE")
     static let long = make("d MMMM yyyy")

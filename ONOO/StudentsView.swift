@@ -233,7 +233,12 @@ struct StudentCard: View {
                     .foregroundStyle(Theme.inkSoft)
                 HStack(spacing: 6) {
                     Chip(text: "\(Fmt.money(student.hourlyRate))/sa", tint: Theme.accent)
-                    Chip(text: "\(student.completedLessons.count) ders", tint: Theme.blue)
+                    if let remaining = student.packageLessonsRemaining {
+                        Chip(text: remaining > 0 ? "Paket: \(remaining) ders" : "Paket bitti",
+                             tint: remaining == 0 ? Theme.red : (remaining <= 2 ? Theme.amber : Theme.blue))
+                    } else {
+                        Chip(text: "\(student.completedLessons.count) ders", tint: Theme.blue)
+                    }
                 }
                 lessonTimelineText
             }
@@ -258,6 +263,7 @@ struct StudentCard: View {
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(Theme.inkSoft)
                 .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
     }
 

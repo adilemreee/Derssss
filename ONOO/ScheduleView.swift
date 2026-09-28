@@ -784,6 +784,17 @@ struct LessonFormView: View {
                         .lineLimit(2...4)
                 }
 
+                if let package = lesson?.package, status == .completed {
+                    // Paketten düşülen dersin ücreti paketten gelir.
+                    Section {
+                        LabeledContent("Ders paketi", value: "\(package.lessonCount) derslik paket")
+                        LabeledContent("Ders başı", value: Fmt.money(package.unitPrice))
+                    } header: {
+                        Text("Ücret")
+                    } footer: {
+                        Text("Bu ders paketten düşüldü; ücreti paket fiyatından gelir.")
+                    }
+                } else {
                 Section("Ücret") {
                     LabeledContent(useCustomFee ? "Standart ücret" : "Kaydedilecek ücret", value: Fmt.money(defaultFee))
                     Toggle("Derse özel ücret", isOn: $useCustomFee)
@@ -799,6 +810,7 @@ struct LessonFormView: View {
                                 .foregroundStyle(Theme.inkSoft)
                         }
                     }
+                }
                 }
 
                 repeatSection
@@ -987,8 +999,12 @@ struct LessonFormView: View {
             lesson.cancellationReason = status == .cancelled ? cancellationReason : .none
             lesson.topic = topic
             lesson.note = note
-            lesson.feeOverride = fee
-            lesson.usesCustomFee = useCustomFee
+            if lesson.package == nil || status != .completed {
+                lesson.feeOverride = fee
+                lesson.usesCustomFee = useCustomFee
+            }
+            // Öğrenci ya da durum değiştiyse paket bağı yeniden kurulur.
+            PackageLedger.reconcile(lesson)
             try? context.save()
             if repeatsWeekly && lesson.sourceTemplate == nil {
                 RecurringLessons.startSeries(from: lesson, in: context)
@@ -1004,6 +1020,8 @@ struct LessonFormView: View {
                              usesCustomFee: useCustomFee)
             context.insert(new)
             new.student = student
+            // İşlendi olarak eklenen geçmiş ders de paketten düşer.
+            PackageLedger.reconcile(new)
             try? context.save()
             if repeatsWeekly {
                 RecurringLessons.startSeries(from: new, in: context)

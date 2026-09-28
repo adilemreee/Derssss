@@ -10,12 +10,21 @@ import Foundation
 enum StudentSummaryPeriod: String, CaseIterable, Identifiable {
     case week = "Haftalık"
     case month = "Aylık"
+    case all = "Tüm zamanlar"
 
     var id: String { rawValue }
 
     var title: String { rawValue }
 
-    var dateInterval: DateInterval {
+    /// Başlıklarda: "Haftalık Ders Özeti", "Tüm Zamanlar Ders Özeti".
+    var headline: String {
+        self == .all ? "Tüm Zamanlar" : rawValue
+    }
+
+    /// Tüm zamanlar: öğrencinin başlangıcından (ya da ilk dersinden) bugünün
+    /// sonuna kadar. İleri tarihli planlı dersler dahil edilmez; özet
+    /// yapılanı anlatır.
+    func dateInterval(for student: Student) -> DateInterval {
         switch self {
         case .week:
             let start = Date().startOfWeek
@@ -23,7 +32,24 @@ enum StudentSummaryPeriod: String, CaseIterable, Identifiable {
         case .month:
             let start = Date().startOfMonth
             return DateInterval(start: start, end: start.adding(months: 1))
+        case .all:
+            let firstLesson = student.allLessons.map(\.date).min() ?? student.startDate
+            let start = min(student.startDate, firstLesson).startOfDay
+            // İleri tarihli ama işaretlenmiş (işlendi/iptal) ders de sayılır.
+            let lastMarked = student.allLessons.filter { $0.status != .planned }.map(\.date).max()
+            let end = max(Date().startOfDay.adding(days: 1),
+                          (lastMarked ?? start).startOfDay.adding(days: 1))
+            return DateInterval(start: start, end: end)
         }
+    }
+
+    /// Uzun listelerde hangi dersler gösterilir: kısa dönemde ilkler, tüm
+    /// zamanlarda en yeniler.
+    func visible<T>(_ items: [T], limit: Int) -> (items: [T], hidden: Int) {
+        guard items.count > limit else { return (items, 0) }
+        return self == .all
+            ? (Array(items.suffix(limit)), items.count - limit)
+            : (Array(items.prefix(limit)), items.count - limit)
     }
 }
 
@@ -59,7 +85,7 @@ enum StudentSharing {
     }
 
     static func summary(for student: Student, period: StudentSummaryPeriod) -> String {
-        let interval = period.dateInterval
+        let interval = period.dateInterval(for: student)
         let lessons = student.allLessons
             .filter { $0.date >= interval.start && $0.date < interval.end }
             .sorted { $0.date < $1.date }
@@ -71,36 +97,50 @@ enum StudentSharing {
         let earned = completed.reduce(0.0) { $0 + $1.fee }
 
         var lines: [String] = []
-        lines.append("\(student.name) - \(period.title) Ders Özeti")
+        lines.append("\(student.name) - \(period.headline) Ders Özeti")
         lines.append("\(Fmt.long.string(from: interval.start)) - \(Fmt.long.string(from: interval.end.adding(days: -1)))")
         lines.append("")
         lines.append("Genel durum")
         lines.append("• İşlenen ders: \(completed.count)")
         lines.append("• Toplam süre: \(Fmt.hours(minutes))")
         lines.append("• İşlenen ders tutarı: \(Fmt.money(earned))")
+        if period == .all {
+            let cancelled = lessons.filter { $0.status == .cancelled }.count
+            if cancelled > 0 { lines.append("• İptal edilen ders: \(cancelled)") }
+            lines.append("• Toplam ödenen: \(Fmt.money(student.totalPaid))")
+        }
         lines.append("• Güncel bakiye: \(balanceText(for: student))")
+        if let remaining = student.packageLessonsRemaining {
+            lines.append(remaining > 0
+                         ? "• Ders paketi: \(remaining) ders kaldı"
+                         : "• Ders paketi bitti")
+        }
 
         if !lessons.isEmpty {
             lines.append("")
-            lines.append("Dersler")
-            for lesson in lessons.prefix(12) {
+            lines.append(period == .all ? "Son dersler" : "Dersler")
+            let shown = period.visible(lessons, limit: 12)
+            for lesson in shown.items {
                 let topic = lesson.topic.isEmpty ? (student.subject.isEmpty ? "Konu belirtilmedi" : student.subject) : lesson.topic
-                lines.append("• \(Fmt.dayMonthShort.string(from: lesson.date)) \(Fmt.time.string(from: lesson.date)) - \(lesson.status.title) - \(topic)")
+                // Tüm zamanlarda dersler farklı yıllardan olabilir.
+                let day = period == .all ? Fmt.dayMonthYearShort(lesson.date) : Fmt.dayMonthShort.string(from: lesson.date)
+                lines.append("• \(day) \(Fmt.time.string(from: lesson.date)) - \(lesson.status.title) - \(topic)")
             }
-            if lessons.count > 12 {
-                lines.append("• +\(lessons.count - 12) ders daha")
+            if shown.hidden > 0 {
+                lines.append(period == .all ? "• ve daha önceki \(shown.hidden) ders" : "• +\(shown.hidden) ders daha")
             }
         }
 
         if !homeworks.isEmpty {
             lines.append("")
             lines.append("Ödevler")
-            for homework in homeworks.prefix(8) {
+            let shownHomeworks = period.visible(homeworks, limit: 8)
+            for homework in shownHomeworks.items {
                 let status = homework.isDone ? "tamamlandı" : (homework.isLate ? "gecikti" : "bekliyor")
                 lines.append("• \(homework.title) - \(status), son: \(Fmt.dayMonthShort.string(from: homework.dueDate))")
             }
-            if homeworks.count > 8 {
-                lines.append("• +\(homeworks.count - 8) ödev daha")
+            if shownHomeworks.hidden > 0 {
+                lines.append("• +\(shownHomeworks.hidden) ödev daha")
             }
         }
 

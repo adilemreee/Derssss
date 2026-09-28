@@ -39,6 +39,9 @@ nonisolated struct LessonDTO: SyncRecord {
 
     var studentClientId: UUID?
     var templateClientId: UUID?
+    /// Ders paketi bağı. Boşsa JSON'a hiç yazılmaz; paketsiz derslerin özeti
+    /// bu alan eklenmeden önceki hâliyle aynı kalır, hepsi yeniden gönderilmez.
+    var packageClientId: UUID?
     var date: Date
     var duration: Int
     var status: String
@@ -91,6 +94,18 @@ nonisolated struct TemplateDTO: SyncRecord {
     var generatedUntil: Date?
 }
 
+nonisolated struct PackageDTO: SyncRecord {
+    var clientId: UUID
+    var clientUpdatedAt: Date = .now
+    var deletedAt: Date?
+
+    var studentClientId: UUID?
+    var startDate: Date
+    var lessonCount: Int
+    var price: Double
+    var note: String
+}
+
 /// İtme ve çekme gövdesi aynı biçimi paylaşır.
 nonisolated struct SyncPayload: Codable {
     var students: [StudentDTO] = []
@@ -98,14 +113,16 @@ nonisolated struct SyncPayload: Codable {
     var payments: [PaymentDTO] = []
     var homeworks: [HomeworkDTO] = []
     var templates: [TemplateDTO] = []
+    var packages: [PackageDTO] = []
 
     var isEmpty: Bool {
         students.isEmpty && lessons.isEmpty && payments.isEmpty
-            && homeworks.isEmpty && templates.isEmpty
+            && homeworks.isEmpty && templates.isEmpty && packages.isEmpty
     }
 
     var count: Int {
         students.count + lessons.count + payments.count + homeworks.count + templates.count
+            + packages.count
     }
 }
 
@@ -116,6 +133,8 @@ nonisolated struct PullResponse: Decodable {
     var payments: [PaymentDTO] = []
     var homeworks: [HomeworkDTO] = []
     var templates: [TemplateDTO] = []
+    /// Paketleri bilmeyen eski sunucu bu alanı göndermez.
+    var packages: [PackageDTO]? = nil
 }
 
 nonisolated struct PushResponse: Decodable {

@@ -6,6 +6,20 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		D0D000000000000000000002 /* DersDefteriWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D0D000000000000000000001 /* DersDefteriWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		D0D00000000000000000000D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F9EEA6C22FFADFC100C6E11E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D0D000000000000000000003;
+			remoteInfo = DersDefteriWidgetExtension;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXCopyFilesBuildPhase section */
 		F9B9625E2FFBAF41004865D9 /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
@@ -13,6 +27,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
+				D0D000000000000000000002 /* DersDefteriWidgetExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -20,10 +35,18 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		D0D000000000000000000001 /* DersDefteriWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = DersDefteriWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		F9EEA6CA2FFADFC100C6E11E /* ONOO.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ONOO.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		D0D000000000000000000009 /* Exceptions for "DersDefteriWidget" folder in "DersDefteriWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = D0D000000000000000000003 /* DersDefteriWidgetExtension */;
+		};
 		F9AA0001300000000000E11E /* Exceptions for "ONOO" folder in "ONOO" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -35,6 +58,19 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		D0D000000000000000000007 /* DersDefteriWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D0D000000000000000000009 /* Exceptions for "DersDefteriWidget" folder in "DersDefteriWidgetExtension" target */,
+			);
+			path = DersDefteriWidget;
+			sourceTree = "<group>";
+		};
+		D0D000000000000000000008 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
+			sourceTree = "<group>";
+		};
 		F9EEA6CC2FFADFC100C6E11E /* ONOO */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -46,6 +82,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		D0D000000000000000000005 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F9EEA6C72FFADFC100C6E11E /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -60,6 +103,8 @@
 			isa = PBXGroup;
 			children = (
 				F9EEA6CC2FFADFC100C6E11E /* ONOO */,
+				D0D000000000000000000007 /* DersDefteriWidget */,
+				D0D000000000000000000008 /* Shared */,
 				F9EEA6CB2FFADFC100C6E11E /* Products */,
 			);
 			sourceTree = "<group>";
@@ -68,6 +113,7 @@
 			isa = PBXGroup;
 			children = (
 				F9EEA6CA2FFADFC100C6E11E /* ONOO.app */,
+				D0D000000000000000000001 /* DersDefteriWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -75,6 +121,29 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		D0D000000000000000000003 /* DersDefteriWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D0D00000000000000000000A /* Build configuration list for PBXNativeTarget "DersDefteriWidgetExtension" */;
+			buildPhases = (
+				D0D000000000000000000004 /* Sources */,
+				D0D000000000000000000005 /* Frameworks */,
+				D0D000000000000000000006 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D0D000000000000000000007 /* DersDefteriWidget */,
+				D0D000000000000000000008 /* Shared */,
+			);
+			name = DersDefteriWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = DersDefteriWidgetExtension;
+			productReference = D0D000000000000000000001 /* DersDefteriWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		F9EEA6C92FFADFC100C6E11E /* ONOO */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = F9EEA6D52FFADFC300C6E11E /* Build configuration list for PBXNativeTarget "ONOO" */;
@@ -87,8 +156,10 @@
 			buildRules = (
 			);
 			dependencies = (
+				D0D00000000000000000000E /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
+				D0D000000000000000000008 /* Shared */,
 				F9EEA6CC2FFADFC100C6E11E /* ONOO */,
 			);
 			name = ONOO;
@@ -108,6 +179,9 @@
 				LastSwiftUpdateCheck = 2630;
 				LastUpgradeCheck = 2630;
 				TargetAttributes = {
+					D0D000000000000000000003 = {
+						CreatedOnToolsVersion = 26.3;
+					};
 					F9EEA6C92FFADFC100C6E11E = {
 						CreatedOnToolsVersion = 26.3;
 					};
@@ -128,11 +202,19 @@
 			projectRoot = "";
 			targets = (
 				F9EEA6C92FFADFC100C6E11E /* ONOO */,
+				D0D000000000000000000003 /* DersDefteriWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		D0D000000000000000000006 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F9EEA6C82FFADFC100C6E11E /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -143,6 +225,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		D0D000000000000000000004 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F9EEA6C62FFADFC100C6E11E /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -152,7 +241,75 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		D0D00000000000000000000E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D0D000000000000000000003 /* DersDefteriWidgetExtension */;
+			targetProxy = D0D00000000000000000000D /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		D0D00000000000000000000B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = DersDefteriWidget/DersDefteriWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 15;
+				DEVELOPMENT_TEAM = GHV7BT96W7;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = DersDefteriWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Ders Defterim";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = adilemre.ONOOOO.Widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		D0D00000000000000000000C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = DersDefteriWidget/DersDefteriWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 15;
+				DEVELOPMENT_TEAM = GHV7BT96W7;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = DersDefteriWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Ders Defterim";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = adilemre.ONOOOO.Widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		F9EEA6D32FFADFC300C6E11E /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -359,6 +516,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		D0D00000000000000000000A /* Build configuration list for PBXNativeTarget "DersDefteriWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D0D00000000000000000000B /* Debug */,
+				D0D00000000000000000000C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		F9EEA6C52FFADFC100C6E11E /* Build configuration list for PBXProject "ONOO" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

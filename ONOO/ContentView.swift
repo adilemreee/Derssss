@@ -49,7 +49,7 @@ struct ContentView: View {
                 await AppNotifications.requestPermissionIfNeeded()
             }
             await AppNotifications.resync(context: context)
-
+            WidgetBridge.refresh(context: context)
         }
         .onChange(of: hasCompletedOnboarding) { _, completed in
             guard completed else { return }
@@ -70,7 +70,7 @@ struct ContentView: View {
             try? await Task.sleep(for: .seconds(1))
             guard !Task.isCancelled else { return }
             await AppNotifications.resync(context: context)
-            
+            WidgetBridge.publish(context: context)
         }
     }
 }
@@ -103,7 +103,7 @@ enum LessonFeeMigration {
 
 #Preview {
     ContentView()
-        .modelContainer(for: [Student.self, Lesson.self, Payment.self, Homework.self, RecurringLessonTemplate.self], inMemory: true)
+        .modelContainer(for: [Student.self, Lesson.self, Payment.self, Homework.self, RecurringLessonTemplate.self, LessonPackage.self], inMemory: true)
         .environment(ProStore())
         .environment(AuthManager())
 }

@@ -37,7 +37,7 @@ struct StudentReportData {
     }
 
     init(student: Student, period: StudentSummaryPeriod, teacherName: String) {
-        let interval = period.dateInterval
+        let interval = period.dateInterval(for: student)
         let inRange = student.allLessons
             .filter { $0.date >= interval.start && $0.date < interval.end }
             .sorted { $0.date < $1.date }
@@ -47,7 +47,7 @@ struct StudentReportData {
         subject = student.subject
         grade = student.grade
         self.teacherName = teacherName
-        periodTitle = period.title
+        periodTitle = period.headline
         rangeText = "\(Fmt.long.string(from: interval.start)) – \(Fmt.long.string(from: interval.end.adding(days: -1)))"
 
         completedCount = completed.count
@@ -57,21 +57,22 @@ struct StudentReportData {
         balance = student.balance
 
         // Rapor bir sayfada okunabilir kalsın diye satır sayısı sınırlanır.
-        lessons = inRange.prefix(18).map { lesson in
+        // Tüm zamanlarda en yeni dersler gösterilir.
+        lessons = period.visible(inRange, limit: 18).items.map { lesson in
             let topic = lesson.topic.isEmpty
                 ? (student.subject.isEmpty ? "—" : student.subject)
                 : lesson.topic
             return Row(
-                leading: "\(Fmt.dayMonthShort.string(from: lesson.date)) \(Fmt.time.string(from: lesson.date))",
+                leading: "\(period == .all ? Fmt.dayMonthYearShort(lesson.date) : Fmt.dayMonthShort.string(from: lesson.date)) \(Fmt.time.string(from: lesson.date))",
                 title: topic,
                 trailing: lesson.status.title
             )
         }
 
-        homeworks = student.allHomeworks
+        let rangeHomeworks = student.allHomeworks
             .filter { $0.assignedDate < interval.end && ($0.dueDate >= interval.start || !$0.isDone) }
             .sorted { $0.dueDate < $1.dueDate }
-            .prefix(12)
+        homeworks = period.visible(rangeHomeworks, limit: 12).items
             .map { homework in
                 Row(
                     leading: Fmt.dayMonthShort.string(from: homework.dueDate),

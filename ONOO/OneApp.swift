@@ -19,7 +19,7 @@ struct OneApp: App {
 
     init() {
         let schema = Schema([Student.self, Lesson.self, Payment.self,
-                             Homework.self, RecurringLessonTemplate.self])
+                             Homework.self, RecurringLessonTemplate.self, LessonPackage.self])
         do {
             // Veriler cihazda tutulur ve kullanıcının hesabına eşitlenir.
             // CloudKit yerine kendi sunucumuz kullanıldığı için burada
@@ -100,6 +100,11 @@ struct OneApp: App {
             // başka bir cihazdaki değişiklik açılışta görünür ve bu cihazdaki
             // değişiklik kapanmadan gönderilir.
             guard phase == .active || phase == .background else { return }
+            // Widget'ta "İşlendi" denen dersler öne gelince işlenir; eşitleme
+            // de onları hemen sunucuya götürür.
+            if phase == .active {
+                WidgetBridge.refresh(context: container.mainContext)
+            }
             Task { await sync.sync(isPro: proStore.isPro) }
         }
     }
