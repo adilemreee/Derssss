@@ -206,7 +206,7 @@ değil).
 
 ## Bilinmesi gerekenler
 
-**Pro şu an neyi kilitliyor?** Beş şey:
+**Pro şu an neyi kilitliyor?** Dört şey:
 
 | Özellik | Ücretsiz | Pro |
 |---|---|---|
@@ -214,7 +214,6 @@ değil).
 | Aktif öğrenci | 2 | Sınırsız |
 | PDF veli raporu | — | ✓ |
 | Günlük program özeti bildirimi | — | ✓ |
-| CSV dışa aktarma | — | ✓ |
 
 **Hesap artık isteğe bağlı.** Eşitleme Pro'ya ait olduğu için ücretsiz
 kullanıcının hesaba ihtiyacı yok; uygulama girişsiz açılıyor ve defter cihazda
@@ -222,10 +221,8 @@ tutuluyor. Apple, kullanılamayan bir özellik için kayıt zorunlu tutmayı
 yönerge 5.1.1(v) ile reddediyor — bu yüzden giriş ekranı bir kapı değil,
 Ayarlar → Eşitleme altından açılan isteğe bağlı bir sayfa.
 
-**Dikkat:** Ücretsiz kullanıcının hiçbir yedekleme yolu yok (CSV de Pro).
-Telefon kaybolursa kayıtlar gider. Uygulama içinde bunu açıkça yazdım, ama
-kötü yorum riskini azaltmak için CSV dışa aktarmayı ücretsiz yapmayı
-değerlendirebilirsin.
+**Yedek:** CSV dışa aktarma ücretsiz; eşitleme olmayan kullanıcı kayıtlarını
+Ayarlar → Dışa Aktar'dan dosya olarak alabilir.
 
 Abonelik açıklamalarını (App Store Connect'te gireceğin metinler) bu listeyle
 tutarlı yaz; `One.storekit` içindeki açıklamalar zaten güncellendi.

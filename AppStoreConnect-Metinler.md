@@ -74,7 +74,6 @@ Pro aboneliğiyle şunlar gelir:
 • Cihazlar arası eşitleme — defterin hesabına yedeklenir, yeni telefonda giriş yapman yeterli
 • PDF veli raporu — dersleri, ödevleri ve bakiyeyi tek belgede veliye gönder
 • Günlük program özeti — her sabah o günün tüm dersleri tek bildirimde
-• CSV dışa aktarma
 
 ABONELİK BİLGİLERİ
 Ders Defteri Pro aylık veya yıllık otomatik yenilenen bir aboneliktir.
@@ -192,8 +191,8 @@ In-app purchase - Ders Defteri Pro (auto-renewable subscription):
 - Monthly: dersdefteri.abonelik.aylik; Yearly: dersdefteri.abonelik.yillik with a
   1-week free trial for eligible users.
 - Pro unlocks: sync across devices with an account, unlimited students
-  (free: 2), PDF parent report, daily schedule summary notification and CSV
-  export. Weekly recurring lessons are free for everyone.
+  (free: 2), PDF parent report and daily schedule summary notification.
+  Weekly recurring lessons and CSV export are free for everyone.
 - Paywall: Summary tab -> top-right menu -> Ayarlar -> "Ders Defteri Pro'ya
   Geç". It also opens when adding a third student. The paywall shows each
   plan's title, length and price, a Restore Purchases button and links to the
@@ -334,7 +333,6 @@ ABONELİĞİN AÇTIKLARI
 - Cihazlar arası eşitleme
 - PDF veli raporu
 - Günlük program özeti bildirimi
-- CSV dışa aktarma
 
 Abonelik sona erdiğinde hiçbir veri silinmez; kayıtlar görüntülenmeye devam
 eder, yalnızca yeni kayıt ekleme sınırlanır.

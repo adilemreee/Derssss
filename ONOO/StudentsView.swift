@@ -16,6 +16,7 @@ struct StudentsView: View {
     @State private var showForm = false
     @State private var showArchive = false
     @State private var showPaywall = false
+    @State private var archiveTarget: Student?
 
     private var activeCount: Int {
         students.filter { !$0.isArchived }.count
@@ -53,8 +54,7 @@ struct StudentsView: View {
                         .buttonStyle(.plain)
                         .contextMenu {
                             Button {
-                                student.isArchived = true
-                                try? context.save()
+                                archiveTarget = student
                             } label: {
                                 Label("Arşivle", systemImage: "archivebox")
                             }
@@ -112,6 +112,7 @@ struct StudentsView: View {
             .sheet(isPresented: $showPaywall) {
                 PaywallView()
             }
+            .studentArchiveDialog($archiveTarget, context: context)
         }
     }
 }
@@ -124,6 +125,7 @@ struct ArchivedStudentsView: View {
     @Environment(ProStore.self) private var proStore
     @Query(sort: \Student.name) private var students: [Student]
     @State private var showPaywall = false
+    @State private var deleteTarget: Student?
 
     private var archived: [Student] {
         students.filter(\.isArchived)
@@ -133,8 +135,7 @@ struct ArchivedStudentsView: View {
     private func unarchive(_ student: Student) {
         let activeCount = students.filter { !$0.isArchived }.count
         if proStore.canAddStudent(activeCount: activeCount) {
-            student.isArchived = false
-            try? context.save()
+            StudentActions.unarchive(student, in: context)
         } else {
             showPaywall = true
         }
@@ -174,8 +175,7 @@ struct ArchivedStudentsView: View {
                                     Label("Aktife Al", systemImage: "arrow.uturn.backward")
                                 }
                                 Button(role: .destructive) {
-                                    context.delete(student)
-                                    try? context.save()
+                                    deleteTarget = student
                                 } label: {
                                     Label("Sil", systemImage: "trash")
                                 }
@@ -196,6 +196,20 @@ struct ArchivedStudentsView: View {
             }
             .sheet(isPresented: $showPaywall) {
                 PaywallView()
+            }
+            .confirmationDialog("Öğrenci silinsin mi?",
+                                isPresented: Binding(get: { deleteTarget != nil },
+                                                     set: { if !$0 { deleteTarget = nil } }),
+                                titleVisibility: .visible,
+                                presenting: deleteTarget) { student in
+                Button("Sil", role: .destructive) {
+                    context.delete(student)
+                    try? context.save()
+                    deleteTarget = nil
+                }
+                Button("Vazgeç", role: .cancel) { deleteTarget = nil }
+            } message: { student in
+                Text("\(student.name) ve tüm ders, ödeme ve ödev kayıtları kalıcı olarak silinir.")
             }
         }
     }
@@ -334,7 +348,7 @@ struct StudentFormView: View {
                     TextField("Sınıf (ör. 11. Sınıf)", text: $grade)
                 }
 
-                Section("Ücret") {
+                Section {
                     HStack {
                         Text("Saatlik ücret")
                         Spacer()
@@ -344,6 +358,12 @@ struct StudentFormView: View {
                             .frame(width: 110)
                         Text("₺")
                             .foregroundStyle(Theme.inkSoft)
+                    }
+                } header: {
+                    Text("Ücret")
+                } footer: {
+                    if student != nil {
+                        Text("Ücreti değiştirirsen planlı dersler yeni ücrete geçer; işlenmiş dersler eski ücretle kalır.")
                     }
                 }
 
@@ -438,7 +458,8 @@ struct StudentFormView: View {
 
     private func save() {
         if let student {
-            if abs(student.hourlyRate - hourlyRate) > 0.001 {
+            let rateChanged = abs(student.hourlyRate - hourlyRate) > 0.001
+            if rateChanged {
                 lockExistingStandardLessonFees(for: student)
             }
             student.name = name
@@ -448,6 +469,9 @@ struct StudentFormView: View {
             student.parentName = parentName
             student.parentPhone = parentPhone
             student.hourlyRate = hourlyRate
+            if rateChanged {
+                StudentActions.applyRateToPlannedLessons(of: student)
+            }
             student.startDate = startDate
             student.colorIndex = colorIndex
             student.notes = notes

@@ -113,4 +113,25 @@ extension View {
             Text("Bu dersten sonraki planlı dersler silinir; bu ders ve öncekiler kalır.")
         }
     }
+
+    /// İptal sebebi sorulur; sebep raporda ve telafi takibinde kullanılır.
+    func lessonCancelDialog(_ target: Binding<Lesson?>, context: ModelContext) -> some View {
+        confirmationDialog("İptal sebebi seç",
+                           isPresented: Binding(get: { target.wrappedValue != nil },
+                                                set: { if !$0 { target.wrappedValue = nil } }),
+                           titleVisibility: .visible,
+                           presenting: target.wrappedValue) { lesson in
+            ForEach([CancellationReason.student, .teacher, .makeup], id: \.self) { reason in
+                Button(reason.title) {
+                    withAnimation(.snappy) {
+                        lesson.status = .cancelled
+                        lesson.cancellationReason = reason
+                        try? context.save()
+                    }
+                    target.wrappedValue = nil
+                }
+            }
+            Button("Vazgeç", role: .cancel) { target.wrappedValue = nil }
+        }
+    }
 }

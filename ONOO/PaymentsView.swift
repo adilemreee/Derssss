@@ -17,6 +17,8 @@ struct PaymentsView: View {
     @State private var showForm = false
     @State private var payingStudent: Student?
     @State private var reminderStudent: Student?
+    @State private var editingPayment: Payment?
+    @State private var pendingDelete: Payment?
 
     private var monthCollected: Double {
         let start = Date().startOfMonth
@@ -27,9 +29,11 @@ struct PaymentsView: View {
         students.reduce(0) { $0 + max($1.balance, 0) }
     }
 
+    /// Arşivdeki öğrencinin borcu da burada kalır; üstteki "Bekleyen"
+    /// toplamı onu sayıyor, liste saymazsa rakamlar tutmuyordu.
     private var balances: [Student] {
         students
-            .filter { !$0.isArchived && abs($0.balance) > 0.5 }
+            .filter { abs($0.balance) > 0.5 }
             .sorted { $0.balance > $1.balance }
     }
 
@@ -67,6 +71,10 @@ struct PaymentsView: View {
             .sheet(item: $reminderStudent) { student in
                 PaymentReminderSheet(student: student)
             }
+            .sheet(item: $editingPayment) { payment in
+                PaymentFormView(payment: payment)
+            }
+            .paymentDeleteDialog($pendingDelete, context: context)
         }
     }
 
@@ -175,11 +183,17 @@ struct PaymentsView: View {
         return VStack(spacing: 10) {
             HStack(spacing: 12) {
                 StudentAvatar(student: student, size: 42)
+                    .opacity(student.isArchived ? 0.55 : 1)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(student.name)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Theme.ink)
-                        .lineLimit(1)
+                    HStack(spacing: 6) {
+                        Text(student.name)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Theme.ink)
+                            .lineLimit(1)
+                        if student.isArchived {
+                            Chip(text: "Arşivde", tint: Theme.inkSoft)
+                        }
+                    }
                     // Avansta "₺3.300 / ₺3.000 ödendi" tuhaf okunuyordu.
                     Text(owes
                          ? "\(Fmt.money(student.totalPaid)) / \(Fmt.money(student.totalEarned)) ödendi"
@@ -264,10 +278,16 @@ struct PaymentsView: View {
 
                     ForEach(group.payments) { payment in
                         PaymentRow(payment: payment)
+                            .contentShape(Rectangle())
+                            .onTapGesture { editingPayment = payment }
                             .contextMenu {
+                                Button {
+                                    editingPayment = payment
+                                } label: {
+                                    Label("Düzenle", systemImage: "pencil")
+                                }
                                 Button(role: .destructive) {
-                                    context.delete(payment)
-                                    try? context.save()
+                                    pendingDelete = payment
                                 } label: {
                                     Label("Sil", systemImage: "trash")
                                 }
@@ -287,20 +307,40 @@ struct PaymentFormView: View {
     @Query(sort: \Student.name) private var students: [Student]
 
     var student: Student? = nil
+    var payment: Payment? = nil
 
     @State private var studentID: PersistentIdentifier?
-    @State private var amount: Double = 0
-    @State private var date = Date()
-    @State private var method: PaymentMethod = .transfer
-    @State private var note = ""
+    @State private var amount: Double
+    @State private var date: Date
+    @State private var method: PaymentMethod
+    @State private var note: String
+    @State private var confirmDelete = false
 
-    init(student: Student? = nil) {
+    init(student: Student? = nil, payment: Payment? = nil) {
         self.student = student
-        _studentID = State(initialValue: student?.persistentModelID)
+        self.payment = payment
+        _studentID = State(initialValue: (payment?.student ?? student)?.persistentModelID)
+        _amount = State(initialValue: payment?.amount ?? 0)
+        _date = State(initialValue: payment?.date ?? Date())
+        _method = State(initialValue: payment?.method ?? .transfer)
+        _note = State(initialValue: payment?.note ?? "")
     }
 
     private var selectedStudent: Student? {
         students.first { $0.persistentModelID == studentID }
+    }
+
+    /// Aktif öğrenciler; arşivdeki bir öğrenciden ödeme alınıyorsa o da.
+    private var pickerStudents: [Student] {
+        students.filter { !$0.isArchived || $0.persistentModelID == studentID }
+    }
+
+    /// Düzenlenen ödeme bakiyede zaten sayılı; "bakiyenin tamamı" onu hariç tutar.
+    private func balanceExcludingThisPayment(_ student: Student) -> Double {
+        guard let payment, payment.student?.persistentModelID == student.persistentModelID else {
+            return student.balance
+        }
+        return student.balance + payment.amount
     }
 
     var body: some View {
@@ -309,7 +349,7 @@ struct PaymentFormView: View {
                 Section("Ödeme") {
                     Picker("Öğrenci", selection: $studentID) {
                         Text("Seçiniz").tag(nil as PersistentIdentifier?)
-                        ForEach(students.filter { !$0.isArchived }) { s in
+                        ForEach(pickerStudents) { s in
                             Text(s.name).tag(Optional(s.persistentModelID))
                         }
                     }
@@ -333,9 +373,9 @@ struct PaymentFormView: View {
                             .foregroundStyle(Theme.inkSoft)
                     }
 
-                    if let s = selectedStudent, s.balance > 0.5 {
-                        Button("Bakiyenin tamamı: \(Fmt.money(s.balance))") {
-                            amount = s.balance
+                    if let s = selectedStudent, balanceExcludingThisPayment(s) > 0.5 {
+                        Button("Bakiyenin tamamı: \(Fmt.money(balanceExcludingThisPayment(s)))") {
+                            amount = balanceExcludingThisPayment(s)
                         }
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Theme.accent)
@@ -354,10 +394,28 @@ struct PaymentFormView: View {
                 Section("Not") {
                     TextField("Not (ör. Temmuz dersleri)", text: $note)
                 }
+
+                if payment != nil {
+                    Section {
+                        Button("Ödemeyi Sil", role: .destructive) { confirmDelete = true }
+                    }
+                }
             }
             .scrollContentBackground(.hidden)
             .background(Theme.paper)
-            .navigationTitle("Ödeme Al")
+            .navigationTitle(payment == nil ? "Ödeme Al" : "Ödemeyi Düzenle")
+            .confirmationDialog("Ödeme silinsin mi?", isPresented: $confirmDelete, titleVisibility: .visible) {
+                Button("Ödemeyi Sil", role: .destructive) {
+                    if let payment {
+                        context.delete(payment)
+                        try? context.save()
+                    }
+                    dismiss()
+                }
+                Button("Vazgeç", role: .cancel) {}
+            } message: {
+                Text("\(Fmt.money(amount)) tutarındaki ödeme silinir ve öğrencinin bakiyesi buna göre değişir.")
+            }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -373,9 +431,17 @@ struct PaymentFormView: View {
 
     private func save() {
         guard let student = selectedStudent else { return }
-        let payment = Payment(date: date, amount: amount, method: method, note: note)
-        context.insert(payment)
-        payment.student = student
+        if let payment {
+            payment.student = student
+            payment.amount = amount
+            payment.date = date
+            payment.method = method
+            payment.note = note
+        } else {
+            let new = Payment(date: date, amount: amount, method: method, note: note)
+            context.insert(new)
+            new.student = student
+        }
         try? context.save()
         dismiss()
     }
@@ -398,5 +464,28 @@ struct PaymentFormView: View {
         if student.balance < -0.5 { return Theme.blue }
         if student.totalEarned <= 0.5 && student.totalPaid <= 0.5 { return Theme.inkSoft }
         return Theme.green
+    }
+}
+
+// MARK: - Ödeme silme onayı
+
+extension View {
+    /// Ödeme uzun basıp "Sil" ile onaysız gidiyordu; tutar bakiyeyi etkilediği
+    /// için ne silindiği söylenir.
+    func paymentDeleteDialog(_ target: Binding<Payment?>, context: ModelContext) -> some View {
+        confirmationDialog("Ödeme silinsin mi?",
+                           isPresented: Binding(get: { target.wrappedValue != nil },
+                                                set: { if !$0 { target.wrappedValue = nil } }),
+                           titleVisibility: .visible,
+                           presenting: target.wrappedValue) { payment in
+            Button("Ödemeyi Sil", role: .destructive) {
+                context.delete(payment)
+                try? context.save()
+                target.wrappedValue = nil
+            }
+            Button("Vazgeç", role: .cancel) { target.wrappedValue = nil }
+        } message: { payment in
+            Text("\(payment.student?.name ?? "Öğrenci") • \(Fmt.money(payment.amount)) • \(Fmt.dayMonthShort.string(from: payment.date))")
+        }
     }
 }

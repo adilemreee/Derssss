@@ -19,6 +19,7 @@ struct SettingsView: View {
 
     @AppStorage("remindersEnabled") private var remindersEnabled = true
     @AppStorage("reminderMinutes") private var reminderMinutes = 60
+    @AppStorage("lessonDonePromptEnabled") private var lessonDonePromptEnabled = true
     @AppStorage("homeworkRemindersEnabled") private var homeworkRemindersEnabled = true
     @AppStorage("homeworkReminderHour") private var homeworkReminderHour = 9
     @AppStorage("dailyDigestEnabled") private var dailyDigestEnabled = false
@@ -105,6 +106,9 @@ struct SettingsView: View {
                             IconLabel(title: "Ne kadar önce?", systemImage: "clock.fill", color: Color(hex: 0x8E8E93))
                         }
                     }
+                    Toggle(isOn: $lessonDonePromptEnabled) {
+                        IconLabel(title: "Ders bitince sor", systemImage: "checkmark.circle.fill", color: Theme.green)
+                    }
                     if permissionDenied {
                         Label("Bildirim izni kapalı. iPhone Ayarlar > Bildirimler > One'dan izin verebilirsin.",
                               systemImage: "exclamationmark.triangle.fill")
@@ -114,7 +118,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Ders Bildirimleri")
                 } footer: {
-                    Text("Planlanan her ders için, ders saatinden önce hatırlatma bildirimi gönderilir.")
+                    Text("Hatırlatma ders saatinden önce gelir. \"Ders bitince sor\" açıksa ders bitiminde gelen bildirimdeki İşlendi düğmesiyle dersi uygulamayı açmadan işaretleyebilirsin.")
                 }
 
                 Section {
@@ -218,40 +222,25 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    if proStore.isPro {
-                        Button {
-                            exportURLs = AppDataExport.makeCSVFiles(students: students,
-                                                                     lessons: lessons,
-                                                                     payments: payments,
-                                                                     homeworks: homeworks)
-                        } label: {
-                            IconLabel(title: "CSV Dosyalarını Hazırla", systemImage: "tablecells", color: Theme.green)
+                    // Ücretsiz kullanıcının başka yedek yolu yok; dışa aktarma
+                    // herkese açık.
+                    Button {
+                        exportURLs = AppDataExport.makeCSVFiles(students: students,
+                                                                 lessons: lessons,
+                                                                 payments: payments,
+                                                                 homeworks: homeworks)
+                    } label: {
+                        IconLabel(title: "CSV Dosyalarını Hazırla", systemImage: "tablecells", color: Theme.green)
+                    }
+                    if !exportURLs.isEmpty {
+                        ShareLink(items: exportURLs) {
+                            IconLabel(title: "CSV Dosyalarını Paylaş", systemImage: "square.and.arrow.up", color: Theme.green)
                         }
-                        if !exportURLs.isEmpty {
-                            ShareLink(items: exportURLs) {
-                                IconLabel(title: "CSV Dosyalarını Paylaş", systemImage: "square.and.arrow.up", color: Theme.green)
-                            }
-                        }
-                    } else {
-                        Button {
-                            showPaywall = true
-                        } label: {
-                            HStack {
-                                IconLabel(title: "CSV Dışa Aktarma", systemImage: "tablecells", color: Theme.green)
-                                Spacer()
-                                Image(systemName: "lock.fill")
-                                    .font(.caption)
-                                    .foregroundStyle(Theme.amber)
-                            }
-                        }
-                        .buttonStyle(.plain)
                     }
                 } header: {
                     Text("Dışa Aktar")
                 } footer: {
-                    Text(proStore.isPro
-                         ? "Öğrenci, ders, ödeme ve ödev kayıtları ayrı CSV dosyaları olarak hazırlanır."
-                         : "CSV dışa aktarma Ders Defteri Pro aboneliğiyle kullanılabilir.")
+                    Text("Öğrenci, ders, ödeme ve ödev kayıtları ayrı CSV dosyaları olarak hazırlanır; Excel ve Numbers ile açılır. Dosyaları iCloud Drive'a ya da e-postana kaydedersen yedeğin olur.")
                 }
 
                 Section {
@@ -284,6 +273,9 @@ struct SettingsView: View {
             .task {
                 let settings = await UNUserNotificationCenter.current().notificationSettings()
                 permissionDenied = settings.authorizationStatus == .denied
+            }
+            .onChange(of: lessonDonePromptEnabled) {
+                Task { await AppNotifications.resync(context: context) }
             }
             .onChange(of: remindersEnabled) {
                 Task { await AppNotifications.resync(context: context) }

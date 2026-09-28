@@ -5,6 +5,7 @@
 
 import SwiftUI
 import SwiftData
+import UserNotifications
 
 @main
 struct OneApp: App {
@@ -28,6 +29,11 @@ struct OneApp: App {
         } catch {
             fatalError("Model container oluşturulamadı: \(error)")
         }
+        // Bildirimdeki "İşlendi" düğmesi uygulama kapalıyken de çalışsın diye
+        // temsilci açılışın en başında kurulur.
+        NotificationActions.shared.container = container
+        UNUserNotificationCenter.current().delegate = NotificationActions.shared
+        AppNotifications.registerCategories()
         Self.configureAppearance()
     }
 
@@ -83,6 +89,12 @@ struct OneApp: App {
             .environment(auth)
         }
         .modelContainer(container)
+        .onChange(of: proStore.isPro) { _, isPro in
+            // Satın alma biter bitmez ilk eşitleme başlar; yoksa uygulama
+            // arka plana gidip gelene kadar "eşitlenmedi" görünüyordu.
+            guard isPro else { return }
+            Task { await sync.sync(isPro: true) }
+        }
         .onChange(of: scenePhase) { _, phase in
             // Uygulama öne geldiğinde ve arkaya giderken eşitlenir; böylece
             // başka bir cihazdaki değişiklik açılışta görünür ve bu cihazdaki

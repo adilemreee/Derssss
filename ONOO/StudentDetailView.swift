@@ -14,6 +14,7 @@ struct StudentDetailView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
+    @Environment(ProStore.self) private var proStore
 
     private enum DetailTab: String, CaseIterable {
         case lessons = "Dersler"
@@ -36,6 +37,10 @@ struct StudentDetailView: View {
     @State private var editingTemplate: RecurringLessonTemplate?
     @State private var showWeeklyForm = false
     @State private var confirmDelete = false
+    @State private var archiveTarget: Student?
+    @State private var showPaywall = false
+    @State private var editingPayment: Payment?
+    @State private var pendingPaymentDelete: Payment?
 
     var body: some View {
         ScrollView {
@@ -73,9 +78,11 @@ struct StudentDetailView: View {
                     Button { showHomeworkForm = true } label: { Label("Ödev Ver", systemImage: "book") }
                     Divider()
                     Button {
-                        student.isArchived.toggle()
-                        try? context.save()
-                        if student.isArchived { dismiss() }
+                        if student.isArchived {
+                            unarchive()
+                        } else {
+                            archiveTarget = student
+                        }
                     } label: {
                         Label(student.isArchived ? "Aktife Al" : "Arşivle",
                               systemImage: student.isArchived ? "arrow.uturn.backward" : "archivebox")
@@ -108,6 +115,12 @@ struct StudentDetailView: View {
         .sheet(item: $editingTemplate) { template in
             RecurringTemplateFormView(template: template)
         }
+        .sheet(item: $editingPayment) { payment in
+            PaymentFormView(payment: payment)
+        }
+        .sheet(isPresented: $showPaywall) { PaywallView() }
+        .studentArchiveDialog($archiveTarget, context: context, onArchived: { dismiss() })
+        .paymentDeleteDialog($pendingPaymentDelete, context: context)
         .sheet(isPresented: $showWeeklyForm) {
             RecurringTemplateFormView(defaultStudent: student)
         }
@@ -456,16 +469,32 @@ struct StudentDetailView: View {
             } else {
                 ForEach(sortedPayments) { payment in
                     PaymentRow(payment: payment, showStudent: false)
+                        .contentShape(Rectangle())
+                        .onTapGesture { editingPayment = payment }
                         .contextMenu {
+                            Button {
+                                editingPayment = payment
+                            } label: {
+                                Label("Düzenle", systemImage: "pencil")
+                            }
                             Button(role: .destructive) {
-                                context.delete(payment)
-                                try? context.save()
+                                pendingPaymentDelete = payment
                             } label: {
                                 Label("Sil", systemImage: "trash")
                             }
                         }
                 }
             }
+        }
+    }
+
+    /// Arşivden dönmek de ücretsiz sürümün öğrenci sınırına tabidir.
+    private func unarchive() {
+        let activeCount = (try? context.fetchCount(FetchDescriptor<Student>(predicate: #Predicate { !$0.isArchived }))) ?? 0
+        if proStore.canAddStudent(activeCount: activeCount) {
+            StudentActions.unarchive(student, in: context)
+        } else {
+            showPaywall = true
         }
     }
 

@@ -20,6 +20,9 @@ enum SampleData {
         guard context.fetchAll(Student.self).isEmpty else { return }
 
         UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
+        // Eski sürümlerden kalan ücret göçü örnek dersleri "özel ücretli"
+        // sanmasın; örnek veri zaten yeni biçimde oluşturuluyor.
+        UserDefaults.standard.set(true, forKey: "didMigrateLockedLessonFeesV1")
         UserDefaults.standard.set("Deniz", forKey: "teacherName")
 
         let today = Date().startOfDay
@@ -71,7 +74,10 @@ enum SampleData {
             for week in -4...1 {
                 let day = offset + week * 7
                 let date = at(day, seed.hour)
-                let status: LessonStatus = date < Date() ? .completed : .planned
+                // Son öğrencinin geçen haftaki dersi işaretlenmemiş kalır;
+                // Özet'teki "İşaretlenmemiş Dersler" kartı görünsün.
+                let forgotten = i == seeds.count - 1 && week == -1
+                let status: LessonStatus = date < Date() && !forgotten ? .completed : .planned
                 let lesson = Lesson(student: student, date: date, duration: duration,
                                     status: status, topic: seed.topics[(week + 4) % seed.topics.count])
                 lesson.lockCurrentStandardFeeIfNeeded()

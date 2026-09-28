@@ -143,8 +143,8 @@ export async function siteRoutes(app: FastifyInstance) {
 <div class="board">
   <strong>Ücretsiz başla.</strong>
   <p>2 öğrenciye kadar tüm temel özellikler ücretsiz. Ders Defteri Pro ile sınırsız
-  öğrenci, cihazlar arası eşitleme, PDF veli raporu, günlük program özeti ve
-  CSV dışa aktarma açılır.</p>
+  öğrenci, cihazlar arası eşitleme, PDF veli raporu ve günlük program özeti
+  açılır.</p>
 </div>
 
 <h2>Verilerin</h2>
@@ -204,7 +204,7 @@ Bu işlem sunucudaki tüm kayıtlarını kalıcı olarak siler ve geri alınamaz
 Cihazındaki defter silinmez; onu uygulamayı kaldırarak temizleyebilirsin.</p>
 
 <h3>Verilerimin yedeğini nasıl alırım?</h3>
-<p class="muted">Pro aboneliğiyle <em>Ayarlar → Dışa Aktar</em> bölümünden öğrenci, ders, ödeme
+<p class="muted"><em>Ayarlar → Dışa Aktar</em> bölümünden öğrenci, ders, ödeme
 ve ödev kayıtlarını CSV dosyaları olarak alabilirsin. Bu dosyalar Excel ve Numbers ile açılır.</p>
 </div>
 

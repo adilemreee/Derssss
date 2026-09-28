@@ -89,7 +89,6 @@ struct PaywallView: View {
             featureItem("Cihazlar arası eşitleme ve yedek")
             featureItem("PDF veli raporu")
             featureItem("Her sabah günlük program özeti")
-            featureItem("CSV dışa aktarma")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .card(16)

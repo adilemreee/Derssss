@@ -23,6 +23,8 @@ struct DashboardView: View {
     @State private var newLessonForStudentFrom: Lesson?
     @State private var cancellationTarget: Lesson?
     @State private var stopRepeatTarget: Lesson?
+    @State private var showAllUnmarked = false
+    @State private var confirmMarkAll = false
 
     private struct UpcomingDayGroup: Identifiable {
         let date: Date
@@ -50,6 +52,7 @@ struct DashboardView: View {
                         // bakılan şey bu. Sayılar tek satırlık şeride indi.
                         headerBoard
                         todaySection
+                        unmarkedSection
                         statsStrip
                         upcomingSection
                         debtorsSection
@@ -89,6 +92,10 @@ struct DashboardView: View {
             .sheet(item: $newLessonForStudentFrom) { lesson in
                 LessonFormView(defaultStudent: lesson.student, defaultDate: lesson.date.adding(days: 7))
             }
+            .sheet(isPresented: $showAllUnmarked) {
+                UnmarkedLessonsView()
+            }
+            .markAllCompletedDialog(isPresented: $confirmMarkAll, lessons: unmarkedLessons, context: context)
             .stopRepeatingDialog($stopRepeatTarget, context: context)
             .confirmationDialog("İptal sebebi seç",
                                 isPresented: Binding(
@@ -365,6 +372,73 @@ struct DashboardView: View {
         cancellationTarget = nil
     }
 
+    // MARK: - İşaretlenmemiş dersler
+
+    /// Saati geçmiş ama hâlâ "planlı" duran dersler. İşlendi denmeyen ders
+    /// bakiyeye yansımaz; haftalık otomatik derslerle bu kolayca unutulur.
+    /// Bugünün dersleri hemen üstte tik düğmesiyle durduğu için dünden öncesi.
+    @ViewBuilder
+    private var unmarkedSection: some View {
+        let items = unmarkedLessons
+        if !items.isEmpty {
+            VStack(spacing: 10) {
+                HStack {
+                    SectionHeader(title: "İşaretlenmemiş Dersler", systemImage: "exclamationmark.circle.fill")
+                    if items.count > 1 {
+                        Button {
+                            confirmMarkAll = true
+                        } label: {
+                            Label("Tümü İşlendi", systemImage: "checkmark")
+                                .font(.caption.weight(.bold))
+                                .lineLimit(1)
+                                .fixedSize()
+                                .foregroundStyle(Theme.green)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Capsule().fill(Theme.green.opacity(0.12)))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                Text("Saati geçti ama hâlâ planlı görünüyor. Yapıldıysa İşlendi de; ücret ancak öyle bakiyeye yansır.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.inkSoft)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                ForEach(items.prefix(4)) { lesson in
+                    UnmarkedLessonRow(lesson: lesson) {
+                        withAnimation(.snappy) {
+                            lesson.status = .completed
+                            try? context.save()
+                        }
+                    } onCancel: {
+                        cancellationTarget = lesson
+                    }
+                    .contextMenu { statusMenu(for: lesson) }
+                }
+
+                if items.count > 4 {
+                    Button {
+                        showAllUnmarked = true
+                    } label: {
+                        HStack {
+                            Text("Tümünü gör (\(items.count))")
+                                .font(.subheadline.weight(.bold))
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.bold))
+                        }
+                        .foregroundStyle(Theme.accent)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+                        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.accent.opacity(0.12)))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
     // MARK: - Yaklaşan dersler
 
     private var upcomingSection: some View {
@@ -479,10 +553,17 @@ struct DashboardView: View {
                 ForEach(debtors) { student in
                     HStack(spacing: 12) {
                         StudentAvatar(student: student, size: 40)
+                            .opacity(student.isArchived ? 0.55 : 1)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(student.name)
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(Theme.ink)
+                            HStack(spacing: 6) {
+                                Text(student.name)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(Theme.ink)
+                                    .lineLimit(1)
+                                if student.isArchived {
+                                    Chip(text: "Arşivde", tint: Theme.inkSoft)
+                                }
+                            }
                             Text("\(student.completedLessons.count) işlenen ders • \(Fmt.money(student.totalPaid)) ödendi")
                                 .font(.caption)
                                 .foregroundStyle(Theme.inkSoft)
@@ -548,6 +629,10 @@ struct DashboardView: View {
         lessons.filter { $0.date.isToday }
     }
 
+    private var unmarkedLessons: [Lesson] {
+        UnmarkedLessons.list(from: lessons)
+    }
+
     /// Bugünün dersleri hemen üstte listelendiği için yaklaşan kart yarından
     /// itibaren ilk ders gününü gösterir; yoksa aynı dersler iki kez görünüyordu.
     private var upcomingDayGroups: [UpcomingDayGroup] {
@@ -600,4 +685,117 @@ struct DashboardView: View {
         homeworks.filter { !$0.isDone }
     }
 
+}
+
+// MARK: - İşaretlenmemiş dersler
+
+enum UnmarkedLessons {
+    /// Dünden önceki, hâlâ planlı dersler; en yenisi önce.
+    static func list(from lessons: [Lesson], now: Date = Date()) -> [Lesson] {
+        let today = now.startOfDay
+        return lessons
+            .filter { $0.status == .planned && $0.date < today }
+            .sorted { $0.date > $1.date }
+    }
+}
+
+/// Tarihli ders satırı ve yanında iptal / işlendi düğmeleri.
+struct UnmarkedLessonRow: View {
+    let lesson: Lesson
+    var onDone: () -> Void
+    var onCancel: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            LessonRow(lesson: lesson, showDate: true, hidesPlannedStatus: true)
+            Button(action: onCancel) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(Theme.red.opacity(0.75))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("İptal olarak işaretle")
+            Button(action: onDone) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(Theme.green)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("İşlendi olarak işaretle")
+        }
+    }
+}
+
+/// Özet'te dördünden fazlası varsa hepsi burada.
+struct UnmarkedLessonsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var context
+    @Query(sort: \Lesson.date) private var lessons: [Lesson]
+    @State private var cancelTarget: Lesson?
+    @State private var confirmMarkAll = false
+
+    private var items: [Lesson] { UnmarkedLessons.list(from: lessons) }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 10) {
+                    if items.isEmpty {
+                        EmptyStateView(icon: "checkmark.seal.fill", title: "Hepsi işaretlendi",
+                                       message: "Saati geçmiş planlı ders kalmadı.")
+                            .padding(.top, 40)
+                    } else {
+                        ForEach(items) { lesson in
+                            UnmarkedLessonRow(lesson: lesson) {
+                                withAnimation(.snappy) {
+                                    lesson.status = .completed
+                                    try? context.save()
+                                }
+                            } onCancel: {
+                                cancelTarget = lesson
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 24)
+                .readableWidth()
+            }
+            .background(Theme.paper.ignoresSafeArea())
+            .navigationTitle("İşaretlenmemiş Dersler")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Kapat") { dismiss() }
+                }
+                if items.count > 1 {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Tümü İşlendi") { confirmMarkAll = true }
+                    }
+                }
+            }
+            .lessonCancelDialog($cancelTarget, context: context)
+            .markAllCompletedDialog(isPresented: $confirmMarkAll, lessons: items, context: context)
+        }
+    }
+}
+
+extension View {
+    /// Toplu işaretleme bakiyeleri birden değiştirdiği için tutarı söyler.
+    func markAllCompletedDialog(isPresented: Binding<Bool>, lessons: [Lesson], context: ModelContext) -> some View {
+        confirmationDialog("\(lessons.count) ders İşlendi olarak işaretlensin mi?",
+                           isPresented: isPresented,
+                           titleVisibility: .visible) {
+            Button("Tümünü İşlendi Yap") {
+                withAnimation(.snappy) {
+                    for lesson in lessons { lesson.status = .completed }
+                    try? context.save()
+                }
+            }
+            Button("Vazgeç", role: .cancel) {}
+        } message: {
+            Text("Toplam \(Fmt.money(lessons.reduce(0) { $0 + $1.fee })) öğrencilerin bakiyesine eklenir. Yapılmayan ders varsa önce onu iptal et.")
+        }
+    }
 }
