@@ -35,6 +35,7 @@ model User {
   payments      Payment[]
   homeworks     Homework[]
   templates     RecurringTemplate[]
+  packages      LessonPackage[]
   subscription  Subscription?
 
   @@map("users")
@@ -75,6 +76,7 @@ model Lesson {
 
   studentClientId String?   @db.Uuid
   templateClientId String?  @db.Uuid
+  packageClientId String?   @db.Uuid
 
   date            DateTime
   duration        Int       @default(60)
@@ -165,6 +167,30 @@ model RecurringTemplate {
   @@unique([userId, clientId])
   @@index([userId, updatedAt])
   @@map("recurring_templates")
+}
+
+/// Peşin satılan ders paketi ("10 ders, 8.000 ₺"). Hangi dersin hangi
+/// paketten düştüğü dersin `packageClientId` alanındadır.
+model LessonPackage {
+  id              String    @id @default(uuid())
+  userId          String
+  clientId        String    @db.Uuid
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  studentClientId String?   @db.Uuid
+
+  startDate       DateTime
+  lessonCount     Int       @default(0)
+  price           Float     @default(0)
+  note            String    @default("")
+
+  clientUpdatedAt DateTime
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  @@unique([userId, clientId])
+  @@index([userId, updatedAt])
+  @@map("lesson_packages")
 }
 
 // MARK: - Abonelik

@@ -66,6 +66,7 @@ const lessonSchema = z.object({
   ...base,
   studentClientId: uuid().nullable().optional(),
   templateClientId: uuid().nullable().optional(),
+  packageClientId: uuid().nullable().optional(),
   date: z.coerce.date(),
   duration: z.number().int().min(0).max(24 * 60).default(60),
   status: z.enum(['planned', 'completed', 'cancelled']).default('planned'),
@@ -109,12 +110,22 @@ const templateSchema = z.object({
   generatedUntil: z.coerce.date().nullable().optional(),
 });
 
+const packageSchema = z.object({
+  ...base,
+  studentClientId: uuid().nullable().optional(),
+  startDate: z.coerce.date(),
+  lessonCount: z.number().int().min(0).max(1000).default(0),
+  price: z.number().finite().min(0).max(10_000_000).default(0),
+  note: z.string().max(1000).default(''),
+});
+
 const pushBody = z.object({
   students: z.array(studentSchema).max(MAX_BATCH).default([]),
   lessons: z.array(lessonSchema).max(MAX_BATCH).default([]),
   payments: z.array(paymentSchema).max(MAX_BATCH).default([]),
   homeworks: z.array(homeworkSchema).max(MAX_BATCH).default([]),
   templates: z.array(templateSchema).max(MAX_BATCH).default([]),
+  packages: z.array(packageSchema).max(MAX_BATCH).default([]),
 });
 
 interface Incoming {
@@ -203,7 +214,8 @@ export async function syncRoutes(app: FastifyInstance) {
       (await applyBatch(prisma.lesson, userId, data.lessons)) +
       (await applyBatch(prisma.payment, userId, data.payments)) +
       (await applyBatch(prisma.homework, userId, data.homeworks)) +
-      (await applyBatch(prisma.recurringTemplate, userId, data.templates));
+      (await applyBatch(prisma.recurringTemplate, userId, data.templates)) +
+      (await applyBatch(prisma.lessonPackage, userId, data.packages));
 
     return reply.send({ ok: true, applied });
   });
@@ -223,12 +235,13 @@ export async function syncRoutes(app: FastifyInstance) {
     const nextCursor = new Date(Date.now() - CURSOR_SKEW_MS);
     const where = since ? { userId, updatedAt: { gt: since } } : { userId };
 
-    const [students, lessons, payments, homeworks, templates] = await Promise.all([
+    const [students, lessons, payments, homeworks, templates, packages] = await Promise.all([
       prisma.student.findMany({ where }),
       prisma.lesson.findMany({ where }),
       prisma.payment.findMany({ where }),
       prisma.homework.findMany({ where }),
       prisma.recurringTemplate.findMany({ where }),
+      prisma.lessonPackage.findMany({ where }),
     ]);
 
     return reply.send({
@@ -238,6 +251,7 @@ export async function syncRoutes(app: FastifyInstance) {
       payments,
       homeworks,
       templates,
+      packages,
     });
   });
 }
