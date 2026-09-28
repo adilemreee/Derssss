@@ -45,8 +45,7 @@ struct SettingsView: View {
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(Theme.ink)
                         } icon: {
-                            Image(systemName: "checkmark.seal.fill")
-                                .foregroundStyle(Theme.green)
+                            SettingsIcon(systemImage: "checkmark.seal.fill", color: Theme.green)
                         }
                     } else {
                         Button {
@@ -63,8 +62,7 @@ struct SettingsView: View {
                                             .foregroundStyle(Theme.inkSoft)
                                     }
                                 } icon: {
-                                    Image(systemName: "crown.fill")
-                                        .foregroundStyle(Theme.amber)
+                                    SettingsIcon(systemImage: "crown.fill", color: Theme.amber)
                                 }
                                 Spacer()
                                 Image(systemName: "chevron.right")
@@ -79,11 +77,13 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    TextField("Öğretmen adı", text: $teacherName)
-                        .textContentType(.name)
-                        .textInputAutocapitalization(.words)
-                    Label("Ana sayfada \(teacherDisplayName) olarak görünür.",
-                          systemImage: "person.crop.circle")
+                    HStack(spacing: 12) {
+                        SettingsIcon(systemImage: "person.fill", color: Theme.blue)
+                        TextField("Öğretmen adı", text: $teacherName)
+                            .textContentType(.name)
+                            .textInputAutocapitalization(.words)
+                    }
+                    Text("Ana sayfada \(teacherDisplayName) olarak görünür.")
                         .font(.caption)
                         .foregroundStyle(Theme.inkSoft)
                 } header: {
@@ -93,12 +93,16 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Toggle("Ders hatırlatıcıları", isOn: $remindersEnabled)
+                    Toggle(isOn: $remindersEnabled) {
+                        IconLabel(title: "Ders hatırlatıcıları", systemImage: "bell.fill", color: Theme.red)
+                    }
                     if remindersEnabled {
-                        Picker("Ne kadar önce?", selection: $reminderMinutes) {
+                        Picker(selection: $reminderMinutes) {
                             ForEach(leadOptions, id: \.self) { m in
                                 Text(m >= 60 ? "\(m / 60) saat önce" : "\(m) dakika önce").tag(m)
                             }
+                        } label: {
+                            IconLabel(title: "Ne kadar önce?", systemImage: "clock.fill", color: Color(hex: 0x8E8E93))
                         }
                     }
                     if permissionDenied {
@@ -114,12 +118,16 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Toggle("Ödev hatırlatıcıları", isOn: $homeworkRemindersEnabled)
+                    Toggle(isOn: $homeworkRemindersEnabled) {
+                        IconLabel(title: "Ödev hatırlatıcıları", systemImage: "book.fill", color: Theme.blue)
+                    }
                     if homeworkRemindersEnabled {
-                        Picker("Bildirim saati", selection: $homeworkReminderHour) {
+                        Picker(selection: $homeworkReminderHour) {
                             ForEach(homeworkHourOptions, id: \.self) { hour in
                                 Text(String(format: "%02d:00", hour)).tag(hour)
                             }
+                        } label: {
+                            IconLabel(title: "Bildirim saati", systemImage: "clock.fill", color: Color(hex: 0x8E8E93))
                         }
                     }
                 } header: {
@@ -130,12 +138,16 @@ struct SettingsView: View {
 
                 Section {
                     if proStore.isPro {
-                        Toggle("Günlük program özeti", isOn: $dailyDigestEnabled)
+                        Toggle(isOn: $dailyDigestEnabled) {
+                            IconLabel(title: "Günlük program özeti", systemImage: "sun.horizon.fill", color: Theme.amber)
+                        }
                         if dailyDigestEnabled {
-                            Picker("Bildirim saati", selection: $dailyDigestHour) {
+                            Picker(selection: $dailyDigestHour) {
                                 ForEach(digestHourOptions, id: \.self) { hour in
                                     Text(String(format: "%02d:00", hour)).tag(hour)
                                 }
+                            } label: {
+                                IconLabel(title: "Bildirim saati", systemImage: "clock.fill", color: Color(hex: 0x8E8E93))
                             }
                         }
                     } else {
@@ -153,8 +165,7 @@ struct SettingsView: View {
                                             .foregroundStyle(Theme.inkSoft)
                                     }
                                 } icon: {
-                                    Image(systemName: "sun.horizon.fill")
-                                        .foregroundStyle(Theme.amber)
+                                    SettingsIcon(systemImage: "sun.horizon.fill", color: Theme.amber)
                                 }
                                 Spacer()
                                 Image(systemName: "lock.fill")
@@ -177,7 +188,7 @@ struct SettingsView: View {
                         AccountView()
                     } label: {
                         HStack {
-                            Label("Eşitleme ve Hesap", systemImage: "arrow.triangle.2.circlepath")
+                            IconLabel(title: "Eşitleme ve Hesap", systemImage: "arrow.triangle.2.circlepath", color: Theme.green)
                             Spacer()
                             Text(syncSummary)
                                 .font(.caption)
@@ -194,13 +205,13 @@ struct SettingsView: View {
 
                 Section {
                     Link(destination: URL(string: "https://dersdefteri.adilemree.xyz/destek")!) {
-                        Label("Destek", systemImage: "questionmark.circle")
+                        IconLabel(title: "Destek", systemImage: "questionmark", color: Theme.blue)
                     }
                     Link(destination: URL(string: "https://dersdefteri.adilemree.xyz/gizlilik")!) {
-                        Label("Gizlilik Politikası", systemImage: "hand.raised")
+                        IconLabel(title: "Gizlilik Politikası", systemImage: "hand.raised.fill", color: Theme.palette[4])
                     }
                     Link(destination: URL(string: "https://dersdefteri.adilemree.xyz/kosullar")!) {
-                        Label("Kullanım Koşulları", systemImage: "doc.text")
+                        IconLabel(title: "Kullanım Koşulları", systemImage: "doc.text.fill", color: Color(hex: 0x8E8E93))
                     }
                 } header: {
                     Text("Hakkında")
@@ -214,11 +225,11 @@ struct SettingsView: View {
                                                                      payments: payments,
                                                                      homeworks: homeworks)
                         } label: {
-                            Label("CSV Dosyalarını Hazırla", systemImage: "tablecells")
+                            IconLabel(title: "CSV Dosyalarını Hazırla", systemImage: "tablecells", color: Theme.green)
                         }
                         if !exportURLs.isEmpty {
                             ShareLink(items: exportURLs) {
-                                Label("CSV Dosyalarını Paylaş", systemImage: "square.and.arrow.up")
+                                IconLabel(title: "CSV Dosyalarını Paylaş", systemImage: "square.and.arrow.up", color: Theme.green)
                             }
                         }
                     } else {
@@ -226,7 +237,7 @@ struct SettingsView: View {
                             showPaywall = true
                         } label: {
                             HStack {
-                                Label("CSV Dışa Aktarma", systemImage: "tablecells")
+                                IconLabel(title: "CSV Dışa Aktarma", systemImage: "tablecells", color: Theme.green)
                                 Spacer()
                                 Image(systemName: "lock.fill")
                                     .font(.caption)
@@ -247,7 +258,7 @@ struct SettingsView: View {
                     Button(role: .destructive) {
                         showResetConfirm = true
                     } label: {
-                        Label("Tüm Verileri Sil", systemImage: "trash")
+                        IconLabel(title: "Tüm Verileri Sil", systemImage: "trash.fill", color: Theme.red, titleColor: Theme.red)
                     }
                 } footer: {
                     Text("Bu cihazdaki tüm öğrenci, ders, ödeme ve ödev kayıtları silinir. Eşitleme açıksa hesabındaki kayıtlar da silinir.")
@@ -314,5 +325,38 @@ struct SettingsView: View {
         guard !trimmed.isEmpty else { return "Öğretmenim" }
         let formatted = trimmed.capitalized(with: Locale(identifier: "tr_TR"))
         return "\(formatted) öğretmenim"
+    }
+}
+
+// MARK: - Ayar ikonları
+
+/// iPhone Ayarları'ndaki gibi renkli kare içinde ikon; uzun liste bir
+/// bakışta taranır.
+private struct SettingsIcon: View {
+    let systemImage: String
+    let color: Color
+
+    var body: some View {
+        Image(systemName: systemImage)
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(width: 28, height: 28)
+            .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(color))
+    }
+}
+
+private struct IconLabel: View {
+    let title: String
+    let systemImage: String
+    let color: Color
+    var titleColor: Color = Theme.ink
+
+    var body: some View {
+        Label {
+            Text(title)
+                .foregroundStyle(titleColor)
+        } icon: {
+            SettingsIcon(systemImage: systemImage, color: color)
+        }
     }
 }

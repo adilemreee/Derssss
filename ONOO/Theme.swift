@@ -316,6 +316,7 @@ struct BalanceBadge: View {
 struct PaidProgressBar: View {
     let paid: Double
     let total: Double
+    var tint: Color = Theme.green
 
     private var ratio: Double {
         guard total > 0 else { return 0 }
@@ -326,7 +327,7 @@ struct PaidProgressBar: View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
                 Capsule().fill(Theme.inkSoft.opacity(0.15))
-                Capsule().fill(Theme.green)
+                Capsule().fill(tint)
                     .frame(width: geo.size.width * ratio)
             }
         }
@@ -380,6 +381,9 @@ struct EmptyStateView: View {
     let icon: String
     let title: String
     var message: String = ""
+    /// Boş ekran "sağ üstteki + ile…" diye tarif etmek yerine işi doğrudan yaptırır.
+    var actionTitle: String? = nil
+    var action: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 8) {
@@ -395,6 +399,16 @@ struct EmptyStateView: View {
                     .font(.caption)
                     .foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)
+            }
+            if let actionTitle, let action {
+                Button(action: action) {
+                    Label(actionTitle, systemImage: "plus")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.capsule)
+                .tint(Theme.board)
+                .padding(.top, 6)
             }
         }
         .frame(maxWidth: .infinity)
@@ -454,6 +468,7 @@ struct LessonRow: View {
 
             VStack(alignment: .trailing, spacing: 4) {
                 Text(Fmt.money(lesson.fee))
+                    .monospacedDigit()
                     .font(.caption.weight(.bold))
                     .foregroundStyle(Theme.ink)
                 if !(hidesPlannedStatus && lesson.status == .planned) {

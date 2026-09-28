@@ -36,10 +36,10 @@ struct StudentDetailView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
+                // İstatistikler ve iletişim başlık kartına alındı; ders listesi
+                // eskiden beş bloğun altında, ekranın ancak sonunda başlıyordu.
                 header
-                statsRow
                 balanceBanner
-                quickActions
                 Picker("Bölüm", selection: $tab) {
                     ForEach(DetailTab.allCases, id: \.self) { t in
                         Text(t.rawValue).tag(t)
@@ -117,8 +117,19 @@ struct StudentDetailView: View {
     // MARK: - Başlık
 
     private var header: some View {
-        HStack(spacing: 16) {
-            StudentAvatar(student: student, size: 64)
+        VStack(spacing: 14) {
+            profileRow
+            Divider()
+            statsRow
+            quickActions
+        }
+        .card()
+        .padding(.top, 8)
+    }
+
+    private var profileRow: some View {
+        HStack(spacing: 14) {
+            StudentAvatar(student: student, size: 56)
             VStack(alignment: .leading, spacing: 6) {
                 Text(student.name)
                     .font(.title3.weight(.bold))
@@ -133,18 +144,20 @@ struct StudentDetailView: View {
                 Text("Saatlik ücret: \(Fmt.money(student.hourlyRate)) • Başlangıç: \(Fmt.dayMonthShort.string(from: student.startDate))")
                     .font(.caption)
                     .foregroundStyle(Theme.inkSoft)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
             }
-            Spacer()
+            Spacer(minLength: 0)
         }
-        .card()
-        .padding(.top, 8)
     }
 
     private var statsRow: some View {
-        HStack(spacing: 12) {
-            miniStat(value: "\(student.completedLessons.count)", label: "İşlenen Ders")
-            miniStat(value: Fmt.hours(student.totalMinutes), label: "Toplam Süre")
-            miniStat(value: Fmt.money(student.totalEarned), label: "Ders Tutarı")
+        HStack(spacing: 0) {
+            miniStat(value: "\(student.completedLessons.count)", label: "İşlenen ders")
+            Divider().frame(height: 30)
+            miniStat(value: Fmt.hours(student.totalMinutes), label: "Toplam süre")
+            Divider().frame(height: 30)
+            miniStat(value: Fmt.money(student.totalEarned), label: "Ders tutarı")
         }
     }
 
@@ -161,7 +174,6 @@ struct StudentDetailView: View {
                 .foregroundStyle(Theme.inkSoft)
         }
         .frame(maxWidth: .infinity)
-        .card(12)
     }
 
     @ViewBuilder
@@ -176,6 +188,7 @@ struct StudentDetailView: View {
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(Theme.red)
                         Text(Fmt.money(student.balance))
+                            .monospacedDigit()
                             .font(.title3.weight(.bold))
                             .fontDesign(.serif)
                             .foregroundStyle(Theme.ink)
@@ -260,17 +273,17 @@ struct StudentDetailView: View {
         let phone = StudentSharing.bestContactPhone(for: student)
         let hasPhone = !StudentSharing.cleanPhone(phone).isEmpty
         return HStack(spacing: 10) {
-            ContactActionButton(icon: "phone.fill", title: "Ara", tint: Theme.green, isDisabled: !hasPhone) {
+            ContactActionButton(icon: "phone.fill", title: "Ara", tint: Theme.green, isDisabled: !hasPhone, isBordered: false) {
                 if let url = StudentSharing.dialURL(for: phone) { openURL(url) }
             }
-            ContactActionButton(icon: "message.fill", title: "SMS", tint: Theme.blue, isDisabled: !hasPhone) {
+            ContactActionButton(icon: "message.fill", title: "SMS", tint: Theme.blue, isDisabled: !hasPhone, isBordered: false) {
                 if let url = StudentSharing.smsURL(for: phone) { openURL(url) }
             }
-            ContactActionButton(icon: "bubble.left.and.bubble.right.fill", title: "WhatsApp", tint: Theme.accent, isDisabled: !hasPhone) {
+            ContactActionButton(icon: "bubble.left.and.bubble.right.fill", title: "WhatsApp", tint: Theme.accent, isDisabled: !hasPhone, isBordered: false) {
                 let text = "Merhaba, \(student.name) için ders durumunu paylaşmak istiyorum."
                 if let url = StudentSharing.whatsappURL(for: phone, text: text) { openURL(url) }
             }
-            ContactActionButton(icon: "square.and.arrow.up.fill", title: "Özet", tint: Theme.amber) {
+            ContactActionButton(icon: "square.and.arrow.up.fill", title: "Özet", tint: Theme.amber, isBordered: false) {
                 showSummary = true
             }
         }
@@ -282,7 +295,7 @@ struct StudentDetailView: View {
         VStack(spacing: 10) {
             if sortedLessons.isEmpty {
                 EmptyStateView(icon: "calendar", title: "Ders kaydı yok",
-                               message: "Sağ üst menüden ders ekleyebilirsin.")
+                               actionTitle: "Ders Ekle", action: { showLessonForm = true })
             } else {
                 ForEach(sortedLessons) { lesson in
                     LessonRow(lesson: lesson, showDate: true, showStudent: false)
@@ -348,7 +361,8 @@ struct StudentDetailView: View {
     private var paymentsTab: some View {
         VStack(spacing: 10) {
             if sortedPayments.isEmpty {
-                EmptyStateView(icon: "turkishlirasign.circle", title: "Ödeme kaydı yok")
+                EmptyStateView(icon: "turkishlirasign.circle", title: "Ödeme kaydı yok",
+                               actionTitle: "Ödeme Al", action: { showPaymentForm = true })
             } else {
                 ForEach(sortedPayments) { payment in
                     PaymentRow(payment: payment, showStudent: false)
@@ -374,7 +388,8 @@ struct StudentDetailView: View {
     private var homeworkTab: some View {
         VStack(spacing: 10) {
             if sortedHomeworks.isEmpty {
-                EmptyStateView(icon: "book", title: "Ödev yok")
+                EmptyStateView(icon: "book", title: "Ödev yok",
+                               actionTitle: "Ödev Ver", action: { showHomeworkForm = true })
             } else {
                 ForEach(sortedHomeworks) { hw in
                     HStack(spacing: 12) {
@@ -466,6 +481,8 @@ struct ContactActionButton: View {
     let title: String
     let tint: Color
     var isDisabled = false
+    /// Başka bir kartın içindeyken kendi çerçevesi olmaz.
+    var isBordered = true
     var action: () -> Void
 
     var body: some View {
@@ -483,9 +500,11 @@ struct ContactActionButton: View {
                     .minimumScaleFactor(0.75)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
-            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.card))
-            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Theme.line, lineWidth: 1))
+            .padding(.vertical, isBordered ? 10 : 0)
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(isBordered ? Theme.card : .clear))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(isBordered ? Theme.line : .clear, lineWidth: 1))
         }
         .buttonStyle(.plain)
         .disabled(isDisabled)
@@ -752,6 +771,7 @@ struct PaymentRow: View {
             }
             Spacer()
             Text("+\(Fmt.money(payment.amount))")
+                .monospacedDigit()
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(Theme.green)
         }

@@ -28,13 +28,22 @@ struct AccountView: View {
 
             if auth.state == .signedIn {
                 Section {
-                    LabeledContent("Giriş") {
-                        Label("Apple ile", systemImage: "apple.logo")
-                            .foregroundStyle(Theme.inkSoft)
+                    HStack(spacing: 12) {
+                        Image(systemName: "apple.logo")
+                            .font(.title3)
+                            .foregroundStyle(Theme.card)
+                            .frame(width: 40, height: 40)
+                            .background(Circle().fill(Theme.ink))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(auth.displayName.flatMap { $0.isEmpty ? nil : $0 } ?? "Apple hesabı")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Theme.ink)
+                            Text("Apple ile giriş yapıldı")
+                                .font(.caption)
+                                .foregroundStyle(Theme.inkSoft)
+                        }
                     }
-                    if let name = auth.displayName, !name.isEmpty {
-                        LabeledContent("Ad", value: name)
-                    }
+                    .padding(.vertical, 2)
                     Button {
                         confirmSignOut = true
                     } label: {
@@ -147,9 +156,9 @@ struct AccountView: View {
             }
         } else {
             Section {
-                LabeledContent("Durum") {
-                    Text(syncText)
-                        .foregroundStyle(syncTint)
+                // Göreli zaman ("2 dakika önce") yarım dakikada bir tazelenir.
+                TimelineView(.periodic(from: .now, by: 30)) { context in
+                    syncStatusRow(now: context.date)
                 }
                 Button {
                     Task { await sync.sync(isPro: proStore.isPro) }
@@ -177,16 +186,66 @@ struct AccountView: View {
         isDeleting = false
     }
 
-    private var syncText: String {
+    private func syncStatusRow(now: Date) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: syncIcon)
+                .font(.title3)
+                .foregroundStyle(syncTint)
+                .symbolEffect(.pulse, isActive: sync.status == .syncing)
+                .frame(width: 32)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(syncTitle)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.ink)
+                if let detail = syncDetail(now: now) {
+                    Text(detail)
+                        .font(.caption)
+                        .foregroundStyle(Theme.inkSoft)
+                }
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    private var syncIcon: String {
         switch sync.status {
-        case .idle: return "Bekliyor"
-        case .disabled: return "Kapalı"
-        case .needsAccount: return "Giriş gerekli"
-        case .syncing: return "Eşitleniyor…"
-        case .synced(let date): return "Son: \(Fmt.time.string(from: date))"
-        case .failed(let message): return message
+        case .synced: return "checkmark.icloud.fill"
+        case .syncing: return "arrow.triangle.2.circlepath.icloud.fill"
+        case .failed: return "exclamationmark.icloud.fill"
+        case .disabled, .needsAccount: return "icloud.slash.fill"
+        case .idle: return "icloud.fill"
         }
     }
+
+    private var syncTitle: String {
+        switch sync.status {
+        case .synced: return "Eşitlendi"
+        case .syncing: return "Eşitleniyor…"
+        case .failed: return "Eşitlenemedi"
+        case .disabled: return "Eşitleme kapalı"
+        case .needsAccount: return "Giriş gerekli"
+        case .idle: return "Eşitleme bekliyor"
+        }
+    }
+
+    private func syncDetail(now: Date) -> String? {
+        switch sync.status {
+        case .synced(let date):
+            if now.timeIntervalSince(date) < 60 { return "Az önce" }
+            return Self.relative.localizedString(for: date, relativeTo: now)
+        case .failed(let message):
+            return message
+        default:
+            return nil
+        }
+    }
+
+    private static let relative: RelativeDateTimeFormatter = {
+        let f = RelativeDateTimeFormatter()
+        f.locale = Locale(identifier: "tr_TR")
+        f.unitsStyle = .full
+        return f
+    }()
 
     private var syncTint: Color {
         switch sync.status {

@@ -108,7 +108,7 @@ struct DashboardView: View {
         VStack(spacing: 22) {
             Chalkboard {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Hoş geldin \(teacherDisplayName) 👋")
+                    Text("Hoş geldin \(teacherDisplayName)\u{00A0}👋")
                         .font(.title2.weight(.bold))
                         .fontDesign(.serif)
                         .foregroundStyle(.white)
@@ -206,9 +206,9 @@ struct DashboardView: View {
     private var greeting: String {
         let hour = Calendar.tr.component(.hour, from: Date())
         switch hour {
-        case 5..<12: return "Günaydın \(teacherDisplayName) 👋"
-        case 12..<18: return "İyi dersler \(teacherDisplayName) 👋"
-        default: return "İyi akşamlar \(teacherDisplayName) 👋"
+        case 5..<12: return "Günaydın \(teacherDisplayName)\u{00A0}👋"
+        case 12..<18: return "İyi dersler \(teacherDisplayName)\u{00A0}👋"
+        default: return "İyi akşamlar \(teacherDisplayName)\u{00A0}👋"
         }
     }
 
@@ -283,7 +283,8 @@ struct DashboardView: View {
             }
             if todayLessons.isEmpty {
                 EmptyStateView(icon: "moon.zzz", title: "Bugün ders yok",
-                               message: "Yukarıdaki \"Ders Ekle\" ile hemen planlayabilirsin.")
+                               message: "Kendine bir çay ısmarla ya da hemen bir ders planla.",
+                               actionTitle: "Ders Ekle", action: { showQuickLesson = true })
             } else {
                 ForEach(todayLessons) { lesson in
                     dashboardLessonRow(lesson)
@@ -356,9 +357,10 @@ struct DashboardView: View {
 
     private var upcomingSection: some View {
         VStack(spacing: 10) {
-            SectionHeader(title: "En Yakın Planlı Ders", systemImage: "calendar.badge.clock")
+            SectionHeader(title: "Yaklaşan Dersler", systemImage: "calendar.badge.clock")
             if upcomingDayGroups.isEmpty {
-                EmptyStateView(icon: "calendar", title: "Planlanmış ders yok")
+                EmptyStateView(icon: "calendar", title: "Yarından itibaren planlı ders yok",
+                               actionTitle: "Ders Planla", action: { showQuickLesson = true })
             } else {
                 ForEach(upcomingDayGroups) { group in
                     upcomingDayCard(group)
@@ -476,6 +478,7 @@ struct DashboardView: View {
                         Spacer()
                         VStack(alignment: .trailing, spacing: 4) {
                             Text(Fmt.money(student.balance))
+                                .monospacedDigit()
                                 .font(.subheadline.weight(.bold))
                                 .foregroundStyle(Theme.red)
                             Button("Ödeme Al") {
@@ -533,10 +536,12 @@ struct DashboardView: View {
         lessons.filter { $0.date.isToday }
     }
 
+    /// Bugünün dersleri hemen üstte listelendiği için yaklaşan kart yarından
+    /// itibaren ilk ders gününü gösterir; yoksa aynı dersler iki kez görünüyordu.
     private var upcomingDayGroups: [UpcomingDayGroup] {
-        let now = Date()
+        let tomorrow = Date().startOfDay.adding(days: 1)
         let futureLessons = lessons
-            .filter { $0.status == .planned && $0.date > now }
+            .filter { $0.status == .planned && $0.date >= tomorrow }
             .sorted { $0.date < $1.date }
         guard let nearestDay = futureLessons.first?.date.startOfDay else { return [] }
         let nextDay = nearestDay.adding(days: 1)

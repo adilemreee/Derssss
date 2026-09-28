@@ -54,7 +54,8 @@ struct HomeworkView: View {
                     if filtered.isEmpty {
                         EmptyStateView(icon: emptyIcon,
                                        title: emptyTitle,
-                                       message: filter == .active ? "Sağ üstteki + ile ödev verebilirsin." : "")
+                                       actionTitle: filter == .active ? "Ödev Ver" : nil,
+                                       action: { showForm = true })
                             .padding(16)
                             .padding(.top, 30)
                     } else {
@@ -165,7 +166,7 @@ struct StickyNoteCard: View {
                 HStack {
                     Text(footerText)
                         .font(.caption2.weight(.bold))
-                        .foregroundStyle(homework.isLate ? Theme.red : Theme.inkSoft)
+                        .foregroundStyle(urgencyColor ?? (homework.isDone ? Theme.green : Theme.inkSoft))
                     Spacer()
                     Button {
                         withAnimation(.snappy) {
@@ -188,6 +189,17 @@ struct StickyNoteCard: View {
                     .fill(noteColor)
                     .shadow(color: .black.opacity(0.1), radius: 5, y: 3)
             )
+            // Teslimi yaklaşan ya da geçen notun köşesi renklenir; panoya
+            // bakınca aciliyet okumadan anlaşılır.
+            .overlay(alignment: .topTrailing) {
+                if let urgencyColor {
+                    CornerMark()
+                        .fill(urgencyColor)
+                        .frame(width: 22, height: 22)
+                        .clipShape(UnevenRoundedRectangle(topTrailingRadius: 6, style: .continuous))
+                }
+            }
+            .opacity(homework.isDone ? 0.7 : 1)
 
             Image(systemName: "pin.fill")
                 .font(.subheadline)
@@ -209,6 +221,20 @@ struct StickyNoteCard: View {
         }
     }
 
+    /// Teslime kalan gün; geçmişse eksi.
+    private var daysLeft: Int {
+        Calendar.tr.dateComponents([.day], from: Date().startOfDay,
+                                   to: homework.dueDate.startOfDay).day ?? 0
+    }
+
+    /// Geciken kırmızı, bugün/yarın teslim turuncu; diğerleri renksiz.
+    private var urgencyColor: Color? {
+        guard !homework.isDone else { return nil }
+        if daysLeft < 0 { return Theme.red }
+        if daysLeft <= 1 { return Theme.amber }
+        return nil
+    }
+
     private var footerText: String {
         if homework.isDone {
             if let d = homework.doneDate {
@@ -216,10 +242,24 @@ struct StickyNoteCard: View {
             }
             return "Yapıldı"
         }
-        if homework.isLate {
-            return "Gecikti! Son: \(Fmt.dayMonthShort.string(from: homework.dueDate))"
+        switch daysLeft {
+        case ..<0: return "\(-daysLeft) gün gecikti"
+        case 0: return "Bugün teslim"
+        case 1: return "Yarın teslim"
+        default: return "\(daysLeft) gün kaldı"
         }
-        return "Son: \(Fmt.dayMonthShort.string(from: homework.dueDate))"
+    }
+}
+
+/// Notun sağ üst köşesindeki üçgen işaret.
+private struct CornerMark: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.closeSubpath()
+        return path
     }
 }
 

@@ -24,7 +24,7 @@ struct ContentView: View {
             Tab("Program", systemImage: "calendar") {
                 ScheduleView()
             }
-            Tab("Ödemeler", systemImage: "turkishlirasign.circle.fill") {
+            Tab("Ödemeler", systemImage: "wallet.bifold") {
                 PaymentsView()
             }
             Tab("Ödevler", systemImage: "checklist") {

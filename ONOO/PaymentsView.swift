@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Charts
 import SwiftData
 
 struct PaymentsView: View {
@@ -36,13 +37,8 @@ struct PaymentsView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 22) {
-                    HStack(spacing: 12) {
-                        StatCard(icon: "tray.and.arrow.down.fill", title: "Bu Ay Tahsilat",
-                                 value: Fmt.money(monthCollected), tint: Theme.green)
-                        StatCard(icon: "hourglass", title: "Bekleyen Alacak",
-                                 value: Fmt.money(pendingTotal), tint: Theme.red)
-                    }
-                    .padding(.top, 4)
+                    collectionCard
+                        .padding(.top, 4)
 
                     balancesSection
                     historySection
@@ -71,6 +67,87 @@ struct PaymentsView: View {
             .sheet(item: $reminderStudent) { student in
                 PaymentReminderSheet(student: student)
             }
+        }
+    }
+
+    // MARK: - Tahsilat kartı
+
+    /// İki büyük sayı kartı yerine tek kart: bu ay, bekleyen ve son altı ayın
+    /// tahsilatı. Hem daha az yer kaplar hem gidişatı gösterir.
+    private var collectionCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Bu ay tahsilat")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.inkSoft)
+                    Text(Fmt.money(monthCollected))
+                        .monospacedDigit()
+                        .font(.title2.weight(.bold))
+                        .fontDesign(.serif)
+                        .foregroundStyle(Theme.ink)
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("Bekleyen")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.inkSoft)
+                    Text(Fmt.money(pendingTotal))
+                        .monospacedDigit()
+                        .font(.headline.weight(.bold))
+                        .fontDesign(.serif)
+                        .foregroundStyle(pendingTotal > 0.5 ? Theme.red : Theme.ink)
+                }
+            }
+
+            Chart(monthlyTotals) { item in
+                BarMark(x: .value("Ay", item.label),
+                        y: .value("Tahsilat", item.total))
+                    .foregroundStyle(item.isCurrent ? Theme.green : Theme.green.opacity(0.35))
+                    .cornerRadius(4)
+            }
+            .chartYAxis(.hidden)
+            // Yalnız ay adları; dikey kılavuz çizgileri küçük kartı kalabalıklaştırıyordu.
+            .chartXAxis {
+                AxisMarks { _ in
+                    AxisValueLabel()
+                }
+            }
+            .frame(height: 90)
+        }
+        .card(14)
+    }
+
+    private struct MonthTotal: Identifiable {
+        let month: Date
+        let label: String
+        let total: Double
+        let isCurrent: Bool
+        var id: Date { month }
+    }
+
+    private var monthlyTotals: [MonthTotal] {
+        let current = Date().startOfMonth
+        return (0..<6).reversed().map { back in
+            let month = current.adding(months: -back)
+            return MonthTotal(month: month,
+                              label: Fmt.monthShort.string(from: month),
+                              total: monthTotal(month),
+                              isCurrent: back == 0)
+        }
+    }
+
+    private func monthTotal(_ month: Date) -> Double {
+        let next = month.adding(months: 1)
+        return payments
+            .filter { $0.date >= month && $0.date < next }
+            .reduce(0) { $0 + $1.amount }
+    }
+
+    private var paymentGroups: [(month: Date, payments: [Payment])] {
+        let grouped = Dictionary(grouping: payments.prefix(25)) { $0.date.startOfMonth }
+        return grouped.keys.sorted(by: >).map { month in
+            (month, grouped[month, default: []].sorted { $0.date > $1.date })
         }
     }
 
@@ -103,7 +180,10 @@ struct PaymentsView: View {
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Theme.ink)
                         .lineLimit(1)
-                    Text("\(Fmt.money(student.totalPaid)) / \(Fmt.money(student.totalEarned)) ödendi")
+                    // Avansta "₺3.300 / ₺3.000 ödendi" tuhaf okunuyordu.
+                    Text(owes
+                         ? "\(Fmt.money(student.totalPaid)) / \(Fmt.money(student.totalEarned)) ödendi"
+                         : "Derslerden \(Fmt.money(-student.balance)) fazla ödendi")
                         .font(.caption)
                         .foregroundStyle(Theme.inkSoft)
                         .lineLimit(1)
@@ -112,6 +192,7 @@ struct PaymentsView: View {
                 Spacer(minLength: 8)
                 VStack(alignment: .trailing, spacing: 2) {
                     Text(Fmt.money(abs(student.balance)))
+                        .monospacedDigit()
                         .font(.headline.weight(.bold))
                         .fontDesign(.serif)
                         .foregroundStyle(owes ? Theme.red : Theme.blue)
@@ -119,6 +200,10 @@ struct PaymentsView: View {
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(Theme.inkSoft)
                 }
+            }
+
+            if !owes {
+                PaidProgressBar(paid: 1, total: 1, tint: Theme.blue)
             }
 
             if owes {
@@ -159,18 +244,35 @@ struct PaymentsView: View {
         VStack(spacing: 10) {
             SectionHeader(title: "Son Ödemeler", systemImage: "clock.arrow.circlepath")
             if payments.isEmpty {
-                EmptyStateView(icon: "turkishlirasign.circle", title: "Henüz ödeme kaydı yok")
+                EmptyStateView(icon: "turkishlirasign.circle", title: "Henüz ödeme kaydı yok",
+                               actionTitle: "Ödeme Ekle", action: { showForm = true })
             } else {
-                ForEach(payments.prefix(25)) { payment in
-                    PaymentRow(payment: payment)
-                        .contextMenu {
-                            Button(role: .destructive) {
-                                context.delete(payment)
-                                try? context.save()
-                            } label: {
-                                Label("Sil", systemImage: "trash")
+                // Ay ay gruplanır; her ayın başında o ayın toplamı yazar.
+                ForEach(paymentGroups, id: \.month) { group in
+                    HStack {
+                        Text(Fmt.monthYear.string(from: group.month))
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(Theme.inkSoft)
+                        Spacer()
+                        Text(Fmt.money(monthTotal(group.month)))
+                            .monospacedDigit()
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(Theme.green)
+                    }
+                    .padding(.horizontal, 4)
+                    .padding(.top, 4)
+
+                    ForEach(group.payments) { payment in
+                        PaymentRow(payment: payment)
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    context.delete(payment)
+                                    try? context.save()
+                                } label: {
+                                    Label("Sil", systemImage: "trash")
+                                }
                             }
-                        }
+                    }
                 }
             }
         }

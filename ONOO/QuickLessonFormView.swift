@@ -58,8 +58,8 @@ struct QuickLessonFormView: View {
         startDate.addingTimeInterval(Double(duration) * 60)
     }
 
-    private var durationOptions: [Int] {
-        [45, 60, 90, 120, 150, 180]
+    private var activeStudents: [Student] {
+        students.filter { !$0.isArchived }
     }
 
     private var conflicts: [Lesson] {
@@ -81,12 +81,8 @@ struct QuickLessonFormView: View {
         NavigationStack {
             Form {
                 Section {
-                    Picker("Öğrenci", selection: $studentID) {
-                        Text("Seçiniz").tag(nil as PersistentIdentifier?)
-                        ForEach(students.filter { !$0.isArchived }) { student in
-                            Text("\(student.name) — \(student.subject)").tag(Optional(student.persistentModelID))
-                        }
-                    }
+                    StudentChipPicker(students: activeStudents, selection: $studentID)
+                        .listRowInsets(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
                 } header: {
                     Text("Öğrenci")
                 }
@@ -104,12 +100,13 @@ struct QuickLessonFormView: View {
                     }
 
                     DatePicker("Saat", selection: $time, displayedComponents: .hourAndMinute)
+                    TimeChipPicker(time: $time)
 
-                    Picker("Süre", selection: $duration) {
-                        ForEach(durationOptions, id: \.self) { option in
-                            Text("\(option) dk").tag(option)
-                        }
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Süre (dakika)")
+                        DurationChipPicker(selection: $duration)
                     }
+                    .padding(.vertical, 2)
 
                     if !conflicts.isEmpty {
                         VStack(alignment: .leading, spacing: 6) {
@@ -139,6 +136,12 @@ struct QuickLessonFormView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Kaydet") { attemptSave() }
                         .disabled(studentID == nil)
+                }
+            }
+            .onAppear {
+                // Tek öğrenci varsa seçmek için dokunmaya gerek yok.
+                if studentID == nil, activeStudents.count == 1 {
+                    studentID = activeStudents[0].persistentModelID
                 }
             }
             .alert("Ders çakışması var", isPresented: $showConflictAlert) {

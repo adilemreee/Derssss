@@ -63,7 +63,14 @@ struct StudentsView: View {
                     if filtered.isEmpty {
                         EmptyStateView(icon: "graduationcap",
                                        title: search.isEmpty ? "Henüz öğrenci yok" : "Sonuç bulunamadı",
-                                       message: search.isEmpty ? "Sağ üstteki + ile ilk öğrencini ekle." : "")
+                                       actionTitle: search.isEmpty ? "Öğrenci Ekle" : nil,
+                                       action: {
+                                           if proStore.canAddStudent(activeCount: activeCount) {
+                                               showForm = true
+                                           } else {
+                                               showPaywall = true
+                                           }
+                                       })
                             .padding(.top, 40)
                     }
                 }

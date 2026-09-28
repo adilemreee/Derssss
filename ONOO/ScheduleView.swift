@@ -45,7 +45,8 @@ struct ScheduleView: View {
                         if dayLessons.isEmpty {
                             EmptyStateView(icon: "moon.zzz",
                                            title: "Bu gün ders yok",
-                                           message: "Sağ üstteki + ile ders ekleyebilirsin.")
+                                           actionTitle: "Ders Ekle",
+                                           action: { showForm = true })
                         } else {
                             ForEach(dayLessons) { lesson in
                                 ScheduleLessonCard(lesson: lesson) {
@@ -275,6 +276,7 @@ struct ScheduleLessonCard: View {
                         .lineLimit(1)
                     Spacer(minLength: 6)
                     Text(Fmt.money(lesson.fee))
+                        .monospacedDigit()
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(Theme.ink)
                 }
@@ -717,8 +719,9 @@ struct LessonFormView: View {
         students.first { $0.persistentModelID == studentID }
     }
 
-    private var durationOptions: [Int] {
-        Array(Set([45, 60, 90, 120, 150, 180] + [duration])).sorted()
+    /// Aktif öğrenciler; arşivlenmiş bir öğrencinin dersi düzenleniyorsa o da.
+    private var chipStudents: [Student] {
+        students.filter { !$0.isArchived || $0.persistentModelID == studentID }
     }
 
     private var defaultFee: Double {
@@ -729,19 +732,16 @@ struct LessonFormView: View {
         NavigationStack {
             Form {
                 Section("Ders") {
-                    Picker("Öğrenci", selection: $studentID) {
-                        Text("Seçiniz").tag(nil as PersistentIdentifier?)
-                        ForEach(students.filter { !$0.isArchived }) { s in
-                            Text("\(s.name) — \(s.subject)").tag(Optional(s.persistentModelID))
-                        }
-                    }
+                    StudentChipPicker(students: chipStudents, selection: $studentID)
+                        .listRowInsets(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
                     DatePicker("Tarih", selection: $day, displayedComponents: .date)
                     DatePicker("Saat", selection: $time, displayedComponents: .hourAndMinute)
-                    Picker("Süre", selection: $duration) {
-                        ForEach(durationOptions, id: \.self) { d in
-                            Text("\(d) dk").tag(d)
-                        }
+                    TimeChipPicker(time: $time)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Süre (dakika)")
+                        DurationChipPicker(selection: $duration)
                     }
+                    .padding(.vertical, 2)
                     if !conflictingLessons.isEmpty {
                         conflictNotice
                     }

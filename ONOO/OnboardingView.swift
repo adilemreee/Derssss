@@ -91,7 +91,7 @@ struct OnboardingView: View {
             // ismin nerede kullanılacağını göstermenin en kısa yolu.
             Chalkboard {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Günaydın \(greetingName) 👋")
+                    Text("Günaydın \(greetingName)\u{00A0}👋")
                         .font(.title3.weight(.bold))
                         .fontDesign(.serif)
                         .foregroundStyle(.white)

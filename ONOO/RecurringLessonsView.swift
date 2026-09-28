@@ -35,7 +35,15 @@ struct RecurringLessonsView: View {
                     if sortedTemplates.isEmpty {
                         EmptyStateView(icon: "repeat",
                                        title: "Tekrarlayan ders yok",
-                                       message: "Sağ üstteki + ile \"Her Salı 17:00\" gibi bir şablon ekle; dersler 4 hafta ilerisi için otomatik oluşturulsun.")
+                                       message: "\"Her Salı 17:00\" gibi bir şablon ekle; dersler 4 hafta ilerisi için otomatik oluşturulsun.",
+                                       actionTitle: "Şablon Ekle",
+                                       action: {
+                                           if proStore.canAddTemplate(activeCount: templates.count) {
+                                               showForm = true
+                                           } else {
+                                               showPaywall = true
+                                           }
+                                       })
                     } else {
                         infoNote
                         ForEach(sortedTemplates) { template in
@@ -146,6 +154,7 @@ struct RecurringTemplateCard: View {
 
             VStack(alignment: .trailing, spacing: 5) {
                 Text(Fmt.money(fee))
+                    .monospacedDigit()
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(Theme.ink)
                 if template.isPaused {
