@@ -56,6 +56,7 @@ struct StudentDetailView: View {
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 24)
+            .readableWidth()
         }
         .background(Theme.paper.ignoresSafeArea())
         .navigationTitle(student.name)
@@ -166,35 +167,54 @@ struct StudentDetailView: View {
     @ViewBuilder
     private var balanceBanner: some View {
         if student.balance > 0.5 {
-            HStack {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.white)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Bekleyen ödeme: \(Fmt.money(student.balance))")
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(.white)
-                    Text("\(Fmt.money(student.totalPaid)) ödendi / \(Fmt.money(student.totalEarned)) ders tutarı")
+            // Dolu kırmızı bant sayfanın geri kalanını bastırıyordu. Açık
+            // zemin + ödenen oranı çubuğu hem daha sakin hem daha bilgilendirici.
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Bekleyen ödeme")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Theme.red)
+                        Text(Fmt.money(student.balance))
+                            .font(.title3.weight(.bold))
+                            .fontDesign(.serif)
+                            .foregroundStyle(Theme.ink)
+                    }
+                    Spacer()
+                    Text("\(Fmt.money(student.totalPaid)) / \(Fmt.money(student.totalEarned)) ödendi")
                         .font(.caption)
-                        .foregroundStyle(.white.opacity(0.85))
+                        .foregroundStyle(Theme.inkSoft)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
-                Spacer()
-                VStack(spacing: 6) {
-                    Button("Ödeme Al") { showPaymentForm = true }
-                        .font(.caption.weight(.bold))
-                        .buttonStyle(.borderedProminent)
-                        .buttonBorderShape(.capsule)
-                        .controlSize(.small)
-                        .tint(.white.opacity(0.22))
-                    Button("Hatırlat") { showReminder = true }
-                        .font(.caption.weight(.bold))
-                        .buttonStyle(.bordered)
-                        .buttonBorderShape(.capsule)
-                        .controlSize(.small)
-                        .tint(.white)
+
+                PaidProgressBar(paid: student.totalPaid, total: student.totalEarned)
+
+                HStack(spacing: 8) {
+                    Button {
+                        showReminder = true
+                    } label: {
+                        Label("Hatırlat", systemImage: "bell")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(Theme.red)
+
+                    Button {
+                        showPaymentForm = true
+                    } label: {
+                        Label("Ödeme Al", systemImage: "plus")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Theme.board)
                 }
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(1)
             }
             .padding(14)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.red))
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.red.opacity(0.08)))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Theme.red.opacity(0.25), lineWidth: 1))
         } else {
             HStack {
                 Image(systemName: balanceZeroIcon)
@@ -246,7 +266,7 @@ struct StudentDetailView: View {
             ContactActionButton(icon: "message.fill", title: "SMS", tint: Theme.blue, isDisabled: !hasPhone) {
                 if let url = StudentSharing.smsURL(for: phone) { openURL(url) }
             }
-            ContactActionButton(icon: "bubble.left.and.bubble.right.fill", title: "WhatsApp", tint: Theme.board, isDisabled: !hasPhone) {
+            ContactActionButton(icon: "bubble.left.and.bubble.right.fill", title: "WhatsApp", tint: Theme.accent, isDisabled: !hasPhone) {
                 let text = "Merhaba, \(student.name) için ders durumunu paylaşmak istiyorum."
                 if let url = StudentSharing.whatsappURL(for: phone, text: text) { openURL(url) }
             }
@@ -265,7 +285,7 @@ struct StudentDetailView: View {
                                message: "Sağ üst menüden ders ekleyebilirsin.")
             } else {
                 ForEach(sortedLessons) { lesson in
-                    LessonRow(lesson: lesson, showDate: true)
+                    LessonRow(lesson: lesson, showDate: true, showStudent: false)
                         .onTapGesture { editingLesson = lesson }
                         .contextMenu {
                             ForEach(LessonStatus.allCases, id: \.self) { status in
@@ -425,7 +445,7 @@ struct StudentDetailView: View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.subheadline)
-                .foregroundStyle(Theme.board)
+                .foregroundStyle(Theme.accent)
                 .frame(width: 28)
             Text(label)
                 .font(.subheadline)
@@ -502,12 +522,43 @@ struct StudentSummarySheet: View {
                     }
                     .pickerStyle(.segmented)
 
-                    Text(text)
-                        .font(.subheadline)
-                        .foregroundStyle(Theme.ink)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .textSelection(.enabled)
-                        .card(14)
+                    // Veliye gidecek mesaj, gideceği biçimde: bir mesaj balonu.
+                    VStack(alignment: .trailing, spacing: 6) {
+                        Text("Veliye gidecek mesaj")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Theme.inkSoft)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Text(text)
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.ink)
+                            .textSelection(.enabled)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 12)
+                            .background(
+                                UnevenRoundedRectangle(topLeadingRadius: 18, bottomLeadingRadius: 18,
+                                                       bottomTrailingRadius: 4, topTrailingRadius: 18,
+                                                       style: .continuous)
+                                    .fill(Theme.green.opacity(0.14))
+                            )
+                            .padding(.leading, 24)
+                    }
+
+                    // Ana eylem veliye WhatsApp'tan göndermek; kopyala ve
+                    // paylaş ikincil. Soluk yeşil düğme basılamaz gibi görünüyordu.
+                    Button {
+                        let phone = StudentSharing.bestContactPhone(for: student)
+                        if let url = StudentSharing.whatsappURL(for: phone, text: text) {
+                            openURL(url)
+                        }
+                    } label: {
+                        Label("WhatsApp'ta Gönder", systemImage: "bubble.left.and.bubble.right.fill")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color(hex: 0x128C7E))
+                    .disabled(StudentSharing.cleanPhone(StudentSharing.bestContactPhone(for: student)).isEmpty)
 
                     HStack(spacing: 10) {
                         Button {
@@ -517,29 +568,14 @@ struct StudentSummarySheet: View {
                             Label(copied ? "Kopyalandı" : "Kopyala", systemImage: copied ? "checkmark" : "doc.on.doc")
                                 .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.bordered)
-                        .tint(Theme.board)
 
                         ShareLink(item: text) {
                             Label("Paylaş", systemImage: "square.and.arrow.up")
                                 .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.borderedProminent)
-                        .tint(Theme.board)
-                    }
-
-                    Button {
-                        let phone = StudentSharing.bestContactPhone(for: student)
-                        if let url = StudentSharing.whatsappURL(for: phone, text: text) {
-                            openURL(url)
-                        }
-                    } label: {
-                        Label("WhatsApp'ta Aç", systemImage: "bubble.left.and.bubble.right.fill")
-                            .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
-                    .tint(Theme.green)
-                    .disabled(StudentSharing.cleanPhone(StudentSharing.bestContactPhone(for: student)).isEmpty)
+                    .tint(Theme.accent)
 
                     Divider().padding(.vertical, 4)
 
@@ -578,7 +614,7 @@ struct StudentSummarySheet: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
-                .tint(Theme.board)
+                .tint(Theme.accent)
 
                 if let pdfURL {
                     ShareLink(item: pdfURL) {
@@ -595,7 +631,7 @@ struct StudentSummarySheet: View {
             } label: {
                 HStack(spacing: 10) {
                     Image(systemName: "doc.richtext")
-                        .foregroundStyle(Theme.board)
+                        .foregroundStyle(Theme.accent)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("PDF Veli Raporu")
                             .font(.subheadline.weight(.semibold))
@@ -660,7 +696,7 @@ struct PaymentReminderSheet: View {
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
-                    .tint(Theme.board)
+                    .tint(Theme.accent)
 
                     Button {
                         let phone = StudentSharing.bestContactPhone(for: student)

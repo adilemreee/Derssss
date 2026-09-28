@@ -60,15 +60,18 @@ struct ScheduleView: View {
                     .padding(.bottom, 24)
                 }
             }
+            .readableWidth()
             .background(Theme.paper.ignoresSafeArea())
             .navigationTitle("Program")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Bugün") {
-                        withAnimation { selectedDate = Date() }
+                // Bugündeyken gizlenir; soluk bir düğme bozuk gibi görünüyordu.
+                if !selectedDate.isToday {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Bugün") {
+                            withAnimation { selectedDate = Date() }
+                        }
                     }
-                    .disabled(selectedDate.isToday)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -124,9 +127,9 @@ struct ScheduleView: View {
                 } label: {
                     Image(systemName: "calendar")
                         .font(.subheadline.weight(.bold))
-                        .foregroundStyle(Theme.board)
+                        .foregroundStyle(Theme.accent)
                         .frame(width: 30, height: 30)
-                        .background(Circle().fill(Theme.board.opacity(0.1)))
+                        .background(Circle().fill(Theme.accent.opacity(0.12)))
                 }
                 .buttonStyle(.plain)
             }
@@ -261,10 +264,20 @@ struct ScheduleLessonCard: View {
                 .fill(lesson.student?.color ?? Theme.inkSoft)
                 .frame(width: 4, height: 46)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(lesson.student?.name ?? "—")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(Theme.ink)
+            // Üst satır: kim ve ne kadar. Alt satır: ders ve konu, sağda durum.
+            // Planlı derste durum etiketi yok; tik düğmesi bunu zaten söylüyor
+            // ve etiketin kapladığı yer konunun "…" ile kesilmesine yol açıyordu.
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(lesson.student?.name ?? "—")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(Theme.ink)
+                        .lineLimit(1)
+                    Spacer(minLength: 6)
+                    Text(Fmt.money(lesson.fee))
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(Theme.ink)
+                }
                 HStack(spacing: 6) {
                     if lesson.sourceTemplate != nil {
                         Image(systemName: "repeat")
@@ -279,23 +292,17 @@ struct ScheduleLessonCard: View {
                             .font(.caption)
                             .foregroundStyle(Theme.red)
                             .lineLimit(1)
-                    }
-                    if !lesson.topic.isEmpty {
+                    } else if !lesson.topic.isEmpty {
                         Text(lesson.topic)
                             .font(.caption)
                             .foregroundStyle(Theme.inkSoft)
                             .lineLimit(1)
                     }
+                    Spacer(minLength: 0)
+                    if lesson.status != .planned {
+                        StatusChip(status: lesson.status)
+                    }
                 }
-            }
-
-            Spacer(minLength: 8)
-
-            VStack(alignment: .trailing, spacing: 5) {
-                Text(Fmt.money(lesson.fee))
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(Theme.ink)
-                StatusChip(status: lesson.status)
             }
 
             if lesson.status == .planned {
@@ -551,17 +558,19 @@ struct MonthCalendarView: View {
     private func monthDayCell(_ day: Date) -> some View {
         let isSelected = day.isSameDay(as: selectedDate)
         let isCurrentMonth = day.startOfMonth == visibleMonth
-        let count = lessons.filter { $0.date.isSameDay(as: day) && $0.status != .cancelled }.count
+        let dayLessons = lessons.filter { $0.date.isSameDay(as: day) && $0.status != .cancelled }
+        let count = dayLessons.count
 
-        // Yoğunluğa göre ısı haritası tonu
+        // Yoğunluğa göre ısı haritası tonu. Koyu yeşilin soluk tonu gri
+        // görünüp "pasif gün" gibi okunuyordu; canlı yeşil kullanılır.
         let fill: Color = {
             if isSelected { return Theme.board }
             guard isCurrentMonth else { return Theme.card.opacity(0.48) }
             switch count {
             case 0: return Theme.card
-            case 1: return Theme.board.opacity(0.10)
-            case 2: return Theme.board.opacity(0.22)
-            default: return Theme.board.opacity(0.36)
+            case 1: return Theme.green.opacity(0.14)
+            case 2: return Theme.green.opacity(0.24)
+            default: return Theme.green.opacity(0.34)
             }
         }()
 
@@ -580,10 +589,15 @@ struct MonthCalendarView: View {
                     .fontDesign(.serif)
                     .foregroundStyle(numberColor)
                 if isCurrentMonth && count > 0 {
-                    Text("\(count) ders")
-                        .font(.system(size: 8, weight: .semibold))
-                        .foregroundStyle(isSelected ? .white.opacity(0.85) : Theme.ink.opacity(0.75))
-                        .frame(height: 10)
+                    // Haftalık şeritteki gibi öğrenci renginde noktalar
+                    HStack(spacing: 3) {
+                        ForEach(Array(dayLessons.prefix(3).enumerated()), id: \.offset) { _, lesson in
+                            Circle()
+                                .fill(isSelected ? .white : (lesson.student?.color ?? Theme.inkSoft))
+                                .frame(width: 5, height: 5)
+                        }
+                    }
+                    .frame(height: 10)
                 } else {
                     Color.clear.frame(height: 10)
                 }
@@ -593,6 +607,8 @@ struct MonthCalendarView: View {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(fill)
             )
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(Fmt.dayMonth.string(from: day)), \(count) ders")
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .stroke(day.isToday && !isSelected ? Theme.amber : Theme.line,
@@ -618,10 +634,10 @@ struct MonthCalendarView: View {
                         Text("Ders ekle")
                             .font(.caption.weight(.semibold))
                     }
-                    .foregroundStyle(Theme.board)
+                    .foregroundStyle(Theme.accent)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(Capsule().fill(Theme.board.opacity(0.1)))
+                    .background(Capsule().fill(Theme.accent.opacity(0.12)))
                 }
                 .buttonStyle(.plain)
             }

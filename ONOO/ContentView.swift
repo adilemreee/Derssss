@@ -10,6 +10,7 @@ struct ContentView: View {
     @Environment(\.modelContext) private var context
     @Environment(ProStore.self) private var proStore
     @AppStorage("didMigrateLockedLessonFeesV1") private var didMigrateLockedLessonFees = false
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @State private var resyncTask: Task<Void, Never>?
 
     var body: some View {
@@ -30,7 +31,7 @@ struct ContentView: View {
                 HomeworkView()
             }
         }
-        .tint(Theme.board)
+        .tint(Theme.accent)
         .environment(\.locale, Locale(identifier: "tr_TR"))
         .task {
             if !didMigrateLockedLessonFees {
@@ -42,9 +43,20 @@ struct ContentView: View {
             if !(await SyncEngine.shared.handlesRecurringLessons(isPro: proStore.isPro)) {
                 RecurringLessons.topUp(context: context)
             }
-            await AppNotifications.requestPermissionIfNeeded()
+            // İzin, tanıtım bitmeden sorulursa uygulamayı daha görmemiş
+            // kullanıcının önüne açılışta bir sistem penceresi çıkar.
+            if hasCompletedOnboarding {
+                await AppNotifications.requestPermissionIfNeeded()
+            }
             await AppNotifications.resync(context: context)
 
+        }
+        .onChange(of: hasCompletedOnboarding) { _, completed in
+            guard completed else { return }
+            Task {
+                await AppNotifications.requestPermissionIfNeeded()
+                await AppNotifications.resync(context: context)
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in
             scheduleResync()

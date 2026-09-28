@@ -17,7 +17,6 @@ struct DashboardView: View {
     @AppStorage("teacherName") private var teacherName = ""
 
     @State private var payingStudent: Student?
-    @State private var showResetConfirm = false
     @State private var showSettings = false
     @State private var showStudentForm = false
     @State private var showQuickLesson = false
@@ -46,10 +45,11 @@ struct DashboardView: View {
                     if students.isEmpty {
                         welcomeContent
                     } else {
+                        // Günün dersleri en üstte: ekran açıldığında ilk
+                        // bakılan şey bu. Sayılar tek satırlık şeride indi.
                         headerBoard
-                        quickLessonButton
-                        statsGrid
                         todaySection
+                        statsStrip
                         upcomingSection
                         debtorsSection
                         homeworkSection
@@ -57,32 +57,21 @@ struct DashboardView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
+                .readableWidth()
             }
             .background(Theme.paper.ignoresSafeArea())
             .navigationTitle("Ders Defteri")
             .toolbar {
+                // "Tüm Verileri Sil" Ayarlar'ın en altına taşındı; Ayarlar'ın
+                // hemen altında durması yanlışlıkla basılmaya çok açıktı.
                 ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button {
-                            showSettings = true
-                        } label: {
-                            Label("Ayarlar", systemImage: "gearshape")
-                        }
-                        Divider()
-                        Button(role: .destructive) {
-                            showResetConfirm = true
-                        } label: {
-                            Label("Tüm Verileri Sil", systemImage: "trash")
-                        }
+                    Button {
+                        showSettings = true
                     } label: {
-                        Image(systemName: "ellipsis.circle")
+                        Image(systemName: "gearshape")
                     }
+                    .accessibilityLabel("Ayarlar")
                 }
-            }
-            .confirmationDialog("Tüm öğrenciler, dersler, ödemeler ve ödevler silinecek. Emin misin?",
-                                isPresented: $showResetConfirm, titleVisibility: .visible) {
-                Button("Hepsini Sil", role: .destructive) { deleteAllData() }
-                Button("Vazgeç", role: .cancel) {}
             }
             .sheet(item: $payingStudent) { student in
                 PaymentFormView(student: student)
@@ -145,9 +134,10 @@ struct DashboardView: View {
                 featureRow(icon: "bell.badge.fill", tint: Theme.red,
                            title: "Ders hatırlatıcıları",
                            text: "Ders yaklaşınca bildirim al")
-                featureRow(icon: "arrow.triangle.2.circlepath", tint: Theme.board,
+                featureRow(icon: "arrow.triangle.2.circlepath", tint: Theme.accent,
                            title: "Hesabında yedekli",
-                           text: "Yeni telefonda kayıtların geri gelir")
+                           text: "Yeni telefonda kayıtların geri gelir",
+                           isPro: true)
             }
 
             Button {
@@ -163,7 +153,9 @@ struct DashboardView: View {
         }
     }
 
-    private func featureRow(icon: String, tint: Color, title: String, text: String) -> some View {
+    /// `isPro`: ücretsiz kullanıcıya Pro özelliğini ücretsizmiş gibi göstermemek için.
+    private func featureRow(icon: String, tint: Color, title: String, text: String,
+                            isPro: Bool = false) -> some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.subheadline.weight(.semibold))
@@ -171,10 +163,15 @@ struct DashboardView: View {
                 .frame(width: 36, height: 36)
                 .background(Circle().fill(tint.opacity(0.12)))
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.subheadline.weight(.bold))
-                    .fontDesign(.serif)
-                    .foregroundStyle(Theme.ink)
+                HStack(spacing: 6) {
+                    Text(title)
+                        .font(.subheadline.weight(.bold))
+                        .fontDesign(.serif)
+                        .foregroundStyle(Theme.ink)
+                    if isPro {
+                        Chip(text: "Pro", tint: Theme.amber, filled: true)
+                    }
+                }
                 Text(text)
                     .font(.caption)
                     .foregroundStyle(Theme.inkSoft)
@@ -232,62 +229,61 @@ struct DashboardView: View {
 
     // MARK: - İstatistikler
 
-    private var statsGrid: some View {
-        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())], spacing: 12) {
-            StatCard(icon: "sun.max.fill", title: "Bugünkü Ders",
-                     value: "\(todayLessons.filter { $0.status != .cancelled }.count)",
-                     tint: Theme.amber)
-            StatCard(icon: "clock.fill", title: "Bu Hafta",
-                     value: Fmt.hours(weekMinutes),
-                     tint: Theme.blue)
-            StatCard(icon: "banknote.fill", title: "Bu Ay Kazanç",
-                     value: Fmt.money(monthCollected),
-                     tint: Theme.green)
-            StatCard(icon: "exclamationmark.circle.fill", title: "Bekleyen Alacak",
-                     value: Fmt.money(pendingTotal),
-                     tint: Theme.red)
+    private var statsStrip: some View {
+        HStack(spacing: 0) {
+            statCell(title: "Bu hafta", value: Fmt.hours(weekMinutes), dot: Theme.blue)
+            Divider().frame(height: 36)
+            statCell(title: "Bu ay tahsilat", value: Fmt.money(monthCollected), dot: Theme.green)
+            Divider().frame(height: 36)
+            statCell(title: "Bekleyen", value: Fmt.money(pendingTotal), dot: Theme.red,
+                     valueColor: pendingTotal > 0.5 ? Theme.red : Theme.ink)
         }
+        .card(12)
     }
 
-    // MARK: - Hızlı ders ekle
-
-    private var quickLessonButton: some View {
-        Button {
-            showQuickLesson = true
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "bolt.fill")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 38, height: 38)
-                    .background(Circle().fill(Theme.amber))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Hızlı Ders Ekle")
-                        .font(.headline.weight(.bold))
-                        .fontDesign(.serif)
-                        .foregroundStyle(Theme.ink)
-                    Text("Öğrenci, süre ve zamanı seçip hemen planla")
-                        .font(.caption)
-                        .foregroundStyle(Theme.inkSoft)
-                }
-                Spacer()
-                Image(systemName: "plus.circle.fill")
-                    .font(.title3)
-                    .foregroundStyle(Theme.board)
+    private func statCell(title: String, value: String, dot: Color,
+                          valueColor: Color = Theme.ink) -> some View {
+        VStack(spacing: 4) {
+            Text(value)
+                .font(.headline.weight(.bold))
+                .fontDesign(.serif)
+                .foregroundStyle(valueColor)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            HStack(spacing: 4) {
+                Circle().fill(dot).frame(width: 6, height: 6)
+                Text(title)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Theme.inkSoft)
+                    .lineLimit(1)
             }
-            .card(14)
         }
-        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Bugünün dersleri
 
     private var todaySection: some View {
         VStack(spacing: 10) {
-            SectionHeader(title: "Bugünün Dersleri", systemImage: "sun.max.fill")
+            HStack {
+                SectionHeader(title: "Bugünün Dersleri", systemImage: "sun.max.fill")
+                Button {
+                    showQuickLesson = true
+                } label: {
+                    Label("Ders Ekle", systemImage: "plus")
+                        .font(.caption.weight(.bold))
+                        .lineLimit(1)
+                        .fixedSize()
+                        .foregroundStyle(Theme.accent)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Capsule().fill(Theme.accent.opacity(0.12)))
+                }
+                .buttonStyle(.plain)
+            }
             if todayLessons.isEmpty {
                 EmptyStateView(icon: "moon.zzz", title: "Bugün ders yok",
-                               message: "Program sekmesinden yeni ders ekleyebilirsin.")
+                               message: "Yukarıdaki \"Ders Ekle\" ile hemen planlayabilirsin.")
             } else {
                 ForEach(todayLessons) { lesson in
                     dashboardLessonRow(lesson)
@@ -298,7 +294,7 @@ struct DashboardView: View {
 
     private func dashboardLessonRow(_ lesson: Lesson) -> some View {
         HStack(spacing: 10) {
-            LessonRow(lesson: lesson)
+            LessonRow(lesson: lesson, hidesPlannedStatus: true)
             if lesson.status == .planned {
                 Button {
                     lesson.status = .completed
@@ -380,10 +376,10 @@ struct DashboardView: View {
                         Image(systemName: "chevron.right")
                             .font(.caption.weight(.bold))
                     }
-                    .foregroundStyle(Theme.board)
+                    .foregroundStyle(Theme.accent)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)
-                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.board.opacity(0.08)))
+                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.accent.opacity(0.12)))
                 }
                 .buttonStyle(.plain)
             }
@@ -399,7 +395,7 @@ struct DashboardView: View {
                     VStack(spacing: 2) {
                         Text(upcomingDayLabel(group.date))
                             .font(.caption2.weight(.bold))
-                            .foregroundStyle(Theme.board)
+                            .foregroundStyle(Theme.accent)
                             .lineLimit(1)
                             .minimumScaleFactor(0.7)
                         Text("\(Calendar.tr.component(.day, from: group.date))")
@@ -408,7 +404,7 @@ struct DashboardView: View {
                             .foregroundStyle(Theme.ink)
                     }
                     .frame(width: 56, height: 54)
-                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.board.opacity(0.1)))
+                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.accent.opacity(0.12)))
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text(upcomingFullDayTitle(group.date))
@@ -587,10 +583,4 @@ struct DashboardView: View {
         homeworks.filter { !$0.isDone }
     }
 
-    private func deleteAllData() {
-        for student in students { context.delete(student) }
-        for lesson in lessons where lesson.student == nil { context.delete(lesson) }
-        for hw in homeworks where hw.student == nil { context.delete(hw) }
-        try? context.save()
-    }
 }

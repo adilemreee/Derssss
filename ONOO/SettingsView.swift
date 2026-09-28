@@ -29,6 +29,7 @@ struct SettingsView: View {
     @State private var permissionDenied = false
     @State private var exportURLs: [URL] = []
     @State private var showPaywall = false
+    @State private var showResetConfirm = false
 
     private let leadOptions = [15, 30, 60, 120]
     private let homeworkHourOptions = [9, 12, 18, 21]
@@ -241,6 +242,16 @@ struct SettingsView: View {
                          ? "Öğrenci, ders, ödeme ve ödev kayıtları ayrı CSV dosyaları olarak hazırlanır."
                          : "CSV dışa aktarma Ders Defteri Pro aboneliğiyle kullanılabilir.")
                 }
+
+                Section {
+                    Button(role: .destructive) {
+                        showResetConfirm = true
+                    } label: {
+                        Label("Tüm Verileri Sil", systemImage: "trash")
+                    }
+                } footer: {
+                    Text("Bu cihazdaki tüm öğrenci, ders, ödeme ve ödev kayıtları silinir. Eşitleme açıksa hesabındaki kayıtlar da silinir.")
+                }
             }
             .scrollContentBackground(.hidden)
             .background(Theme.paper)
@@ -253,6 +264,11 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showPaywall) {
                 PaywallView()
+            }
+            .confirmationDialog("Tüm öğrenciler, dersler, ödemeler ve ödevler silinecek. Emin misin?",
+                                isPresented: $showResetConfirm, titleVisibility: .visible) {
+                Button("Hepsini Sil", role: .destructive) { deleteAllData() }
+                Button("Vazgeç", role: .cancel) {}
             }
             .task {
                 let settings = await UNUserNotificationCenter.current().notificationSettings()
@@ -277,6 +293,15 @@ struct SettingsView: View {
                 Task { await AppNotifications.resync(context: context) }
             }
         }
+    }
+
+    private func deleteAllData() {
+        // Öğrenciye bağlı kayıtlar öğrenciyle birlikte zincirleme silinir.
+        for student in students { context.delete(student) }
+        for lesson in lessons where lesson.student == nil { context.delete(lesson) }
+        for payment in payments where payment.student == nil { context.delete(payment) }
+        for hw in homeworks where hw.student == nil { context.delete(hw) }
+        try? context.save()
     }
 
     private var syncSummary: String {

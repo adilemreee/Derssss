@@ -17,15 +17,7 @@ struct SplashView: View {
             Theme.paper.ignoresSafeArea()
 
             VStack(spacing: 22) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 26, style: .continuous)
-                        .fill(Theme.board)
-                        .frame(width: 96, height: 96)
-                        .shadow(color: Theme.board.opacity(0.22), radius: 16, y: 8)
-                    Image(systemName: "book.closed.fill")
-                        .font(.system(size: 42, weight: .semibold))
-                        .foregroundStyle(.white)
-                }
+                BrandIcon(size: 96)
                 .scaleEffect(iconShown ? 1 : 0.65)
                 .opacity(iconShown ? 1 : 0)
 

@@ -36,8 +36,11 @@ enum Theme {
         })
     }
 
-    /// Kara tahta yeşili — ana marka rengi
+    /// Kara tahta yeşili — ana marka rengi. Dolgular için: üstüne beyaz yazı gelir.
     static let board = dynamic(light: 0x1E4B39, dark: 0x2F6C51)
+    /// Yazı, ikon, bağlantı ve çerçevelerde kullanılan yeşil. Koyu modda
+    /// `board` koyu zeminde okunmadığı için daha açık bir ton kullanılır.
+    static let accent = dynamic(light: 0x1E4B39, dark: 0x7FC79F)
     static let boardDark = dynamic(light: 0x143528, dark: 0x224E3B)
     /// Kağıt/krem zemin — koyu modda gece defteri
     static let paper = dynamic(light: 0xF7F2E7, dark: 0x1A1915)
@@ -162,6 +165,17 @@ extension View {
     }
 }
 
+// MARK: - Okunabilir genişlik
+
+extension View {
+    /// iPad'de içerik ekranın tamamına yayılmasın diye ortada sınırlı
+    /// genişlikte durur. iPhone'da ekran bu sınırdan dar olduğu için etkisizdir.
+    func readableWidth(_ maxWidth: CGFloat = 720) -> some View {
+        frame(maxWidth: maxWidth)
+            .frame(maxWidth: .infinity)
+    }
+}
+
 // MARK: - Kara tahta paneli
 
 struct Chalkboard<Content: View>: View {
@@ -213,7 +227,7 @@ struct StatCard: View {
     let icon: String
     let title: String
     let value: String
-    var tint: Color = Theme.board
+    var tint: Color = Theme.accent
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -296,6 +310,51 @@ struct BalanceBadge: View {
     }
 }
 
+// MARK: - Tahsilat çubuğu
+
+/// Ders tutarının ne kadarının ödendiğini gösteren ince çubuk.
+struct PaidProgressBar: View {
+    let paid: Double
+    let total: Double
+
+    private var ratio: Double {
+        guard total > 0 else { return 0 }
+        return min(max(paid / total, 0), 1)
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(Theme.inkSoft.opacity(0.15))
+                Capsule().fill(Theme.green)
+                    .frame(width: geo.size.width * ratio)
+            }
+        }
+        .frame(height: 6)
+        .accessibilityElement()
+        .accessibilityLabel("Yüzde \(Int((ratio * 100).rounded())) ödendi")
+    }
+}
+
+// MARK: - Uygulama ikonu
+
+/// Açılışta ve tanıtımda standart bir sembol yerine uygulamanın gerçek ikonu.
+struct BrandIcon: View {
+    var size: CGFloat = 92
+
+    var body: some View {
+        // Görselin kenarındaki ince boşluk kırpılır, köşeler iOS ikon oranında yuvarlanır.
+        Image("BrandIcon")
+            .resizable()
+            .scaledToFill()
+            .frame(width: size * 1.08, height: size * 1.08)
+            .frame(width: size, height: size)
+            .clipShape(RoundedRectangle(cornerRadius: size * 0.2237, style: .continuous))
+            .shadow(color: Theme.boardDark.opacity(0.25), radius: size * 0.16, y: size * 0.08)
+            .accessibilityHidden(true)
+    }
+}
+
 // MARK: - Öğrenci avatarı
 
 struct StudentAvatar: View {
@@ -353,6 +412,12 @@ struct EmptyStateView: View {
 struct LessonRow: View {
     let lesson: Lesson
     var showDate: Bool = false
+    /// Öğrencinin kendi sayfasında her satırda adını tekrarlamak yerine
+    /// dersin konusu başlık olur.
+    var showStudent: Bool = true
+    /// Satırın yanında "işlendi" tik düğmesi varsa "Planlandı" etiketi
+    /// tekrar olur ve konuya yer bırakmaz.
+    var hidesPlannedStatus: Bool = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -361,20 +426,24 @@ struct LessonRow: View {
                     .font(.subheadline.weight(.bold))
                     .fontDesign(.serif)
                     .foregroundStyle(Theme.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
                 Text(showDate ? Fmt.time.string(from: lesson.date) : "\(lesson.duration) dk")
                     .font(.caption2)
                     .foregroundStyle(Theme.inkSoft)
+                    .lineLimit(1)
             }
-            .frame(width: 54)
+            .frame(width: 58)
 
             RoundedRectangle(cornerRadius: 2)
                 .fill(lesson.student?.color ?? Theme.inkSoft)
                 .frame(width: 3, height: 34)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(lesson.student?.name ?? "—")
+                Text(title)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.ink)
+                    .lineLimit(1)
                 Text(subtitle)
                     .font(.caption)
                     .foregroundStyle(Theme.inkSoft)
@@ -387,7 +456,9 @@ struct LessonRow: View {
                 Text(Fmt.money(lesson.fee))
                     .font(.caption.weight(.bold))
                     .foregroundStyle(Theme.ink)
-                StatusChip(status: lesson.status)
+                if !(hidesPlannedStatus && lesson.status == .planned) {
+                    StatusChip(status: lesson.status)
+                }
             }
         }
         .padding(12)
@@ -395,8 +466,24 @@ struct LessonRow: View {
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Theme.line, lineWidth: 1))
     }
 
+    private var title: String {
+        if showStudent { return lesson.student?.name ?? "—" }
+        if !lesson.topic.isEmpty { return lesson.topic }
+        let subject = lesson.student?.subject ?? ""
+        return subject.isEmpty ? "Ders" : subject
+    }
+
     private var subtitle: String {
         let subject = lesson.student?.subject ?? ""
+        if !showStudent {
+            var parts: [String] = []
+            if !lesson.topic.isEmpty && !subject.isEmpty { parts.append(subject) }
+            parts.append("\(lesson.duration) dk")
+            if lesson.status == .cancelled && lesson.cancellationReason != .none {
+                parts.append(lesson.cancellationReason.shortTitle)
+            }
+            return parts.joined(separator: " • ")
+        }
         if lesson.status == .cancelled && lesson.cancellationReason != .none {
             return subject.isEmpty ? lesson.cancellationReason.title : "\(subject) • \(lesson.cancellationReason.shortTitle)"
         }

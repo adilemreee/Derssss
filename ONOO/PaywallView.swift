@@ -22,7 +22,9 @@ struct PaywallView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 22) {
+                // Planlar ve fiyat ilk ekranda görünsün diye özellikler kısa
+                // bir onay listesi; satın alma düğmesi altta sabit durur.
+                VStack(spacing: 18) {
                     header
                     featureList
                     planSection
@@ -32,15 +34,16 @@ struct PaywallView: View {
                             .foregroundStyle(Theme.red)
                             .multilineTextAlignment(.center)
                     }
-                    purchaseButton
                     restoreButton
                     legalNote
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 28)
+                .padding(.top, 4)
+                .padding(.bottom, 20)
+                .readableWidth(560)
             }
             .background(Theme.paper.ignoresSafeArea())
+            .safeAreaInset(edge: .bottom) { purchaseBar }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button {
@@ -60,17 +63,17 @@ struct PaywallView: View {
     // MARK: - Başlık
 
     private var header: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
             ZStack {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(Theme.board)
-                    .frame(width: 76, height: 76)
+                    .frame(width: 60, height: 60)
                 Image(systemName: "crown.fill")
-                    .font(.system(size: 34))
+                    .font(.system(size: 27))
                     .foregroundStyle(Theme.amber)
             }
             Text("Ders Defteri Pro")
-                .font(.system(size: 30, weight: .bold, design: .serif))
+                .font(.system(size: 28, weight: .bold, design: .serif))
                 .foregroundStyle(Theme.ink)
             Text("Defterini sınırsız kullan")
                 .font(.subheadline)
@@ -81,53 +84,32 @@ struct PaywallView: View {
     // MARK: - Özellikler
 
     private var featureList: some View {
-        VStack(spacing: 0) {
-            featureRow(icon: "person.3.fill",
-                       title: "Sınırsız öğrenci",
-                       detail: "Ücretsiz sürümde \(ProStore.freeStudentLimit) aktif öğrenci")
-            Divider().padding(.leading, 46)
-            featureRow(icon: "arrow.triangle.2.circlepath",
-                       title: "Cihazlar arası eşitleme",
-                       detail: "Defterin hesabında yedeklenir, yeni telefonda geri gelir")
-            Divider().padding(.leading, 46)
-            featureRow(icon: "doc.richtext",
-                       title: "PDF veli raporu",
-                       detail: "Dersleri, ödevleri ve bakiyeyi tek belgede gönder")
-            Divider().padding(.leading, 46)
-            featureRow(icon: "sun.horizon.fill",
-                       title: "Günlük program özeti",
-                       detail: "Her sabah o günün tüm dersleri tek bildirimde")
-            Divider().padding(.leading, 46)
-            featureRow(icon: "repeat",
-                       title: "Sınırsız tekrarlayan ders",
-                       detail: "Ücretsiz sürümde \(ProStore.freeTemplateLimit) şablon")
-            Divider().padding(.leading, 46)
-            featureRow(icon: "tablecells",
-                       title: "CSV dışa aktarma",
-                       detail: "Tüm kayıtlarını dosya olarak al")
+        VStack(alignment: .leading, spacing: 11) {
+            featureItem("Sınırsız öğrenci", note: "ücretsizde \(ProStore.freeStudentLimit)")
+            featureItem("Cihazlar arası eşitleme ve yedek")
+            featureItem("PDF veli raporu")
+            featureItem("Her sabah günlük program özeti")
+            featureItem("Sınırsız tekrarlayan ders", note: "ücretsizde \(ProStore.freeTemplateLimit)")
+            featureItem("CSV dışa aktarma")
         }
-        .card(4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .card(16)
     }
 
-    private func featureRow(icon: String, title: String, detail: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
+    private func featureItem(_ title: String, note: String? = nil) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.subheadline)
+                .foregroundStyle(Theme.green)
+            Text(title)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Theme.board)
-                .frame(width: 34, height: 34)
-                .background(Circle().fill(Theme.board.opacity(0.1)))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(Theme.ink)
-                Text(detail)
+                .foregroundStyle(Theme.ink)
+            if let note {
+                Text(note)
                     .font(.caption)
                     .foregroundStyle(Theme.inkSoft)
             }
-            Spacer()
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
     }
 
     // MARK: - Planlar
@@ -142,14 +124,18 @@ struct PaywallView: View {
                         .font(.caption)
                         .foregroundStyle(Theme.inkSoft)
                 } else {
-                    Text("Planlar yüklenemedi.")
+                    Image(systemName: "wifi.exclamationmark")
+                        .font(.title3)
+                        .foregroundStyle(Theme.inkSoft)
+                    Text("Planlar şu an yüklenemedi. İnternet bağlantını kontrol edip tekrar dene.")
                         .font(.caption)
                         .foregroundStyle(Theme.inkSoft)
+                        .multilineTextAlignment(.center)
                     Button("Tekrar Dene") {
                         Task { await store.loadProducts() }
                     }
                     .font(.caption.weight(.bold))
-                    .tint(Theme.board)
+                    .tint(Theme.accent)
                 }
             }
             .padding(.vertical, 16)
@@ -171,7 +157,7 @@ struct PaywallView: View {
             HStack(spacing: 12) {
                 Image(systemName: isSelected ? "largecircle.fill.circle" : "circle")
                     .font(.title3)
-                    .foregroundStyle(isSelected ? Theme.board : Theme.inkSoft.opacity(0.5))
+                    .foregroundStyle(isSelected ? Theme.accent : Theme.inkSoft.opacity(0.5))
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
                         Text(isYearly ? "Yıllık" : "Aylık")
@@ -198,6 +184,11 @@ struct PaywallView: View {
                     Text(isYearly ? "yılda bir" : "ayda bir")
                         .font(.caption2)
                         .foregroundStyle(Theme.inkSoft)
+                    if isYearly {
+                        Text("ayda \((product.price / 12).formatted(product.priceFormatStyle))")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(Theme.green)
+                    }
                 }
             }
             .padding(14)
@@ -207,7 +198,7 @@ struct PaywallView: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(isSelected ? Theme.board : Theme.line, lineWidth: isSelected ? 1.8 : 1)
+                    .stroke(isSelected ? Theme.accent : Theme.line, lineWidth: isSelected ? 1.8 : 1)
             )
         }
         .buttonStyle(.plain)
@@ -262,6 +253,36 @@ struct PaywallView: View {
         .opacity(selectedProduct == nil ? 0.5 : 1)
     }
 
+    /// Ekranın altına sabitlenen düğme. Hemen altında ne ödeneceği yazar;
+    /// ücretsiz deneme düğmede, fiyat görünmeden durmamalı.
+    private var purchaseBar: some View {
+        VStack(spacing: 6) {
+            purchaseButton
+            if let product = selectedProduct {
+                Text(priceSummary(product))
+                    .font(.caption2)
+                    .foregroundStyle(Theme.inkSoft)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 10)
+        .padding(.bottom, 6)
+        .readableWidth(560)
+        .background(Theme.paper.ignoresSafeArea(edges: .bottom))
+        .overlay(alignment: .top) {
+            Rectangle().fill(Theme.line).frame(height: 1)
+        }
+    }
+
+    private func priceSummary(_ product: Product) -> String {
+        let period = product.id == ProStore.yearlyID ? "yıl" : "ay"
+        if let trial = freeTrial(product) {
+            return "\(trialLength(trial).capitalized(with: Locale(identifier: "tr_TR"))) ücretsiz, sonra \(product.displayPrice)/\(period). İstediğin zaman iptal edebilirsin."
+        }
+        return "\(product.displayPrice)/\(period). İstediğin zaman iptal edebilirsin."
+    }
+
     private var buttonTitle: String {
         if let product = selectedProduct, let trial = freeTrial(product) {
             return "\(trialLength(trial).capitalized(with: Locale(identifier: "tr_TR"))) Ücretsiz Dene"
@@ -291,7 +312,7 @@ struct PaywallView: View {
                 Link("Gizlilik Politikası", destination: URL(string: "https://dersdefteri.adilemree.xyz/gizlilik")!)
             }
             .font(.caption2.weight(.semibold))
-            .foregroundStyle(Theme.board)
+            .foregroundStyle(Theme.accent)
         }
     }
 }

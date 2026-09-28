@@ -69,6 +69,7 @@ struct StudentsView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
+                .readableWidth()
             }
             .background(Theme.paper.ignoresSafeArea())
             .navigationTitle("Öğrenciler")
@@ -210,7 +211,7 @@ struct StudentCard: View {
                     .font(.caption)
                     .foregroundStyle(Theme.inkSoft)
                 HStack(spacing: 6) {
-                    Chip(text: "\(Fmt.money(student.hourlyRate))/sa", tint: Theme.board)
+                    Chip(text: "\(Fmt.money(student.hourlyRate))/sa", tint: Theme.accent)
                     Chip(text: "\(student.completedLessons.count) ders", tint: Theme.blue)
                 }
                 lessonTimelineText
@@ -250,15 +251,16 @@ struct StudentCard: View {
             .sorted { $0.date < $1.date }
             .first
 
-        var parts: [String] = []
-        if let last {
-            parts.append("Son: \(Fmt.dayMonthShort.string(from: last.date))")
-        }
+        // Dar kartta ikisi yan yana sığmıyor ve saat "…" ile kesiliyordu.
+        // Asıl lazım olan sıradaki ders; yoksa son dersin tarihi gösterilir.
         if let next {
             let day = next.date.isToday ? "Bugün" : (next.date.isSameDay(as: now.adding(days: 1)) ? "Yarın" : Fmt.dayMonthShort.string(from: next.date))
-            parts.append("Sıradaki: \(day) \(Fmt.time.string(from: next.date))")
+            return "Sıradaki ders: \(day) \(Fmt.time.string(from: next.date))"
         }
-        return parts.isEmpty ? nil : parts.joined(separator: " • ")
+        if let last {
+            return "Son ders: \(Fmt.dayMonthShort.string(from: last.date))"
+        }
+        return nil
     }
 }
 
@@ -312,7 +314,7 @@ struct StudentFormView: View {
                                         .buttonStyle(.bordered)
                                         .buttonBorderShape(.capsule)
                                         .controlSize(.mini)
-                                        .tint(Theme.board)
+                                        .tint(Theme.accent)
                                 }
                             }
                         }

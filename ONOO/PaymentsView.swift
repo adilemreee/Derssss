@@ -49,6 +49,7 @@ struct PaymentsView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
+                .readableWidth()
             }
             .background(Theme.paper.ignoresSafeArea())
             .navigationTitle("Ödemeler")
@@ -84,50 +85,72 @@ struct PaymentsView: View {
                                message: "Hiçbir öğrencinin borcu veya avansı yok.")
             } else {
                 ForEach(balances) { student in
-                    HStack(spacing: 12) {
-                        StudentAvatar(student: student, size: 42)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(student.name)
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(Theme.ink)
-                            Text("\(Fmt.money(student.totalEarned)) ders tutarı • \(Fmt.money(student.totalPaid)) ödendi")
-                                .font(.caption)
-                                .foregroundStyle(Theme.inkSoft)
-                        }
-                        Spacer()
-                        VStack(alignment: .trailing, spacing: 4) {
-                            Text(student.balance > 0 ? Fmt.money(student.balance) : Fmt.money(-student.balance))
-                                .font(.subheadline.weight(.bold))
-                                .foregroundStyle(student.balance > 0 ? Theme.red : Theme.blue)
-                            if student.balance > 0 {
-                                HStack(spacing: 6) {
-                                    Button("Hatırlat") {
-                                        reminderStudent = student
-                                    }
-                                    .font(.caption.weight(.bold))
-                                    .buttonStyle(.bordered)
-                                    .buttonBorderShape(.capsule)
-                                    .controlSize(.mini)
-                                    .tint(Theme.red)
-
-                                    Button("Ödeme Al") {
-                                        payingStudent = student
-                                    }
-                                    .font(.caption.weight(.bold))
-                                    .buttonStyle(.bordered)
-                                    .buttonBorderShape(.capsule)
-                                    .controlSize(.mini)
-                                    .tint(Theme.green)
-                                }
-                            } else {
-                                Chip(text: "Avans", tint: Theme.blue)
-                            }
-                        }
-                    }
-                    .card(12)
+                    balanceRow(student)
                 }
             }
         }
+    }
+
+    /// Üstte kim ve ne kadar, altta ödenen oranı ve eylemler. Düğmeler ayrı
+    /// satırda durur; dar ekranda yazıları ikiye bölünmesin diye sabitlenir.
+    private func balanceRow(_ student: Student) -> some View {
+        let owes = student.balance > 0
+        return VStack(spacing: 10) {
+            HStack(spacing: 12) {
+                StudentAvatar(student: student, size: 42)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(student.name)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Theme.ink)
+                        .lineLimit(1)
+                    Text("\(Fmt.money(student.totalPaid)) / \(Fmt.money(student.totalEarned)) ödendi")
+                        .font(.caption)
+                        .foregroundStyle(Theme.inkSoft)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+                Spacer(minLength: 8)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(Fmt.money(abs(student.balance)))
+                        .font(.headline.weight(.bold))
+                        .fontDesign(.serif)
+                        .foregroundStyle(owes ? Theme.red : Theme.blue)
+                    Text(owes ? "kalan" : "avans")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(Theme.inkSoft)
+                }
+            }
+
+            if owes {
+                PaidProgressBar(paid: student.totalPaid, total: student.totalEarned)
+
+                HStack(spacing: 8) {
+                    Spacer()
+                    Button {
+                        reminderStudent = student
+                    } label: {
+                        Label("Hatırlat", systemImage: "bell")
+                            .lineLimit(1)
+                            .fixedSize()
+                    }
+                    .tint(Theme.red)
+
+                    Button {
+                        payingStudent = student
+                    } label: {
+                        Label("Ödeme Al", systemImage: "plus")
+                            .lineLimit(1)
+                            .fixedSize()
+                    }
+                    .tint(Theme.green)
+                }
+                .font(.caption.weight(.bold))
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.capsule)
+                .controlSize(.small)
+            }
+        }
+        .card(12)
     }
 
     // MARK: - Geçmiş
@@ -213,7 +236,7 @@ struct PaymentFormView: View {
                             amount = s.balance
                         }
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Theme.board)
+                        .foregroundStyle(Theme.accent)
                     }
 
                     DatePicker("Tarih", selection: $date, displayedComponents: .date)

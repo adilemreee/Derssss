@@ -51,6 +51,9 @@ struct OneApp: App {
                 }
             }
             .task {
+                #if DEBUG
+                SampleData.seedIfRequested(context: container.mainContext)
+                #endif
                 SyncEngine.shared.configure(context: container.mainContext)
                 SyncIdentity.assignMissingUUIDs(context: container.mainContext)
                 await auth.restoreSession()

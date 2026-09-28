@@ -77,7 +77,7 @@ struct SignInView: View {
                             Link("Koşullar", destination: URL(string: "https://dersdefteri.adilemree.xyz/kosullar")!)
                         }
                         .font(.caption2.weight(.semibold))
-                        .foregroundStyle(Theme.board)
+                        .foregroundStyle(Theme.accent)
                     }
                     .padding(.top, 32)
                 }
@@ -98,7 +98,7 @@ struct SignInView: View {
         HStack(alignment: .top, spacing: 14) {
             Image(systemName: icon)
                 .font(.title3)
-                .foregroundStyle(Theme.board)
+                .foregroundStyle(Theme.accent)
                 .frame(width: 28)
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)

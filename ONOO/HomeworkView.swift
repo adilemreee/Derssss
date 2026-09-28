@@ -58,7 +58,7 @@ struct HomeworkView: View {
                             .padding(16)
                             .padding(.top, 30)
                     } else {
-                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())],
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 12)],
                                   spacing: 14) {
                             ForEach(Array(filtered.enumerated()), id: \.element.persistentModelID) { idx, hw in
                                 StickyNoteCard(homework: hw, index: idx) {
@@ -69,6 +69,7 @@ struct HomeworkView: View {
                         .padding(.horizontal, 16)
                         .padding(.top, 8)
                         .padding(.bottom, 24)
+                        .readableWidth(1000)
                     }
                 }
             }
