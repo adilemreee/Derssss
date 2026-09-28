@@ -43,6 +43,21 @@ app.addContentTypeParser('application/json', { parseAs: 'string' }, (_request, b
   }
 });
 
+// Beklenmeyen hatalarda iç ayrıntı (Prisma sorgusu, tablo alanları) istemciye
+// gitmez; uygulama bu metni kullanıcıya olduğu gibi gösteriyor. Ayrıntı logda.
+app.setErrorHandler((err, request, reply) => {
+  const error = err as { statusCode?: number; code?: string; message?: string };
+  const status = error.statusCode ?? 500;
+  if (status >= 500) {
+    request.log.error({ err }, 'beklenmeyen hata');
+    return reply.code(500).send({
+      error: 'internal_error',
+      message: 'Sunucuda bir sorun oluştu. Biraz sonra tekrar dene.',
+    });
+  }
+  return reply.code(status).send({ error: error.code ?? 'bad_request', message: error.message ?? 'Geçersiz istek.' });
+});
+
 await app.register(helmet, { contentSecurityPolicy: false });
 
 // İstemci yerel bir iOS uygulaması olduğu için tarayıcı kaynaklı istek

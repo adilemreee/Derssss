@@ -33,8 +33,16 @@ const CURSOR_SKEW_MS = 2000;
 /// Tek istekte işlenecek azami kayıt sayısı (tür başına).
 const MAX_BATCH = 500;
 
+/**
+ * Kimlikler küçük harfe çevrilir. iOS UUID'leri büyük harfle gönderir,
+ * Postgres `uuid` sütunu küçük harfle döndürür. Sorgu ikisini eşleştirir ama
+ * `applyBatch` içindeki harita metin karşılaştırır; çevrilmezse var olan her
+ * kayıt yeni sanılır ve güncelleme yerine `create` benzersizlik hatası verir.
+ */
+const uuid = () => z.string().uuid().transform((s) => s.toLowerCase());
+
 const base = {
-  clientId: z.string().uuid(),
+  clientId: uuid(),
   clientUpdatedAt: z.coerce.date(),
   deletedAt: z.coerce.date().nullable().optional(),
 };
@@ -56,8 +64,8 @@ const studentSchema = z.object({
 
 const lessonSchema = z.object({
   ...base,
-  studentClientId: z.string().uuid().nullable().optional(),
-  templateClientId: z.string().uuid().nullable().optional(),
+  studentClientId: uuid().nullable().optional(),
+  templateClientId: uuid().nullable().optional(),
   date: z.coerce.date(),
   duration: z.number().int().min(0).max(24 * 60).default(60),
   status: z.enum(['planned', 'completed', 'cancelled']).default('planned'),
@@ -70,7 +78,7 @@ const lessonSchema = z.object({
 
 const paymentSchema = z.object({
   ...base,
-  studentClientId: z.string().uuid().nullable().optional(),
+  studentClientId: uuid().nullable().optional(),
   date: z.coerce.date(),
   amount: z.number().finite().min(0).max(10_000_000).default(0),
   method: z.enum(['cash', 'transfer', 'other']).default('cash'),
@@ -79,7 +87,7 @@ const paymentSchema = z.object({
 
 const homeworkSchema = z.object({
   ...base,
-  studentClientId: z.string().uuid().nullable().optional(),
+  studentClientId: uuid().nullable().optional(),
   title: z.string().max(300).default(''),
   detail: z.string().max(4000).default(''),
   assignedDate: z.coerce.date(),
@@ -90,7 +98,7 @@ const homeworkSchema = z.object({
 
 const templateSchema = z.object({
   ...base,
-  studentClientId: z.string().uuid().nullable().optional(),
+  studentClientId: uuid().nullable().optional(),
   weekday: z.number().int().min(1).max(7).default(3),
   hour: z.number().int().min(0).max(23).default(17),
   minute: z.number().int().min(0).max(59).default(0),
@@ -129,14 +137,23 @@ async function applyBatch(
 ): Promise<number> {
   if (rows.length === 0) return 0;
 
+  // Aynı kayıt bir istekte iki kez gelirse yalnız en yenisi uygulanır.
+  const latest = new Map<string, Incoming>();
+  for (const row of rows) {
+    const seen = latest.get(row.clientId);
+    if (!seen || seen.clientUpdatedAt.getTime() <= row.clientUpdatedAt.getTime()) {
+      latest.set(row.clientId, row);
+    }
+  }
+
   const existing: { clientId: string; clientUpdatedAt: Date }[] = await delegate.findMany({
-    where: { userId, clientId: { in: rows.map((r) => r.clientId) } },
+    where: { userId, clientId: { in: [...latest.keys()] } },
     select: { clientId: true, clientUpdatedAt: true },
   });
-  const existingMap = new Map(existing.map((e) => [e.clientId, e.clientUpdatedAt]));
+  const existingMap = new Map(existing.map((e) => [e.clientId.toLowerCase(), e.clientUpdatedAt]));
 
   let applied = 0;
-  for (const row of rows) {
+  for (const row of latest.values()) {
     const current = existingMap.get(row.clientId);
     if (current && current.getTime() >= row.clientUpdatedAt.getTime()) continue;
 
@@ -144,7 +161,17 @@ async function applyBatch(
     if (current) {
       await delegate.update({ where: { userId_clientId: { userId, clientId } }, data });
     } else {
-      await delegate.create({ data: { ...data, clientId, userId } });
+      try {
+        await delegate.create({ data: { ...data, clientId, userId } });
+      } catch (error) {
+        // Aynı cihazın eşzamanlı iki isteği aynı kaydı birlikte oluşturmaya
+        // çalışabilir; ikincisi güncellemeye döner.
+        if ((error as { code?: string }).code !== 'P2002') throw error;
+        await delegate.updateMany({
+          where: { userId, clientId, clientUpdatedAt: { lt: row.clientUpdatedAt } },
+          data,
+        });
+      }
     }
     applied += 1;
   }
