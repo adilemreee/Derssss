@@ -40,7 +40,7 @@ struct OnboardingView: View {
                 .tag(0)
 
                 OnboardingPage(title: "Programın\nHep Hazır",
-                               message: "\u{201C}Her Salı 17:00\u{201D} gibi tekrarlayan dersler tanımla, dersler otomatik oluşsun. Ders öncesi bildirimle hatırla.") {
+                               message: "\u{201C}Her Salı 17:00\u{201D} gibi haftalık derslerini bir kez gir, sonraki haftalar otomatik planlansın. Ders öncesi bildirimle hatırla.") {
                     ProgramPreview()
                 }
                 .tag(1)

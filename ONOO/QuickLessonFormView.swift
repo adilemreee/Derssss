@@ -25,6 +25,7 @@ struct QuickLessonFormView: View {
     @State private var customDate = Date()
     @State private var time: Date
     @State private var duration = 60
+    @State private var repeatsWeekly = false
     @State private var showConflictAlert = false
 
     init(defaultDate: Date = Date()) {
@@ -54,19 +55,17 @@ struct QuickLessonFormView: View {
         return Calendar.tr.date(from: comps) ?? selectedDay
     }
 
-    private var endDate: Date {
-        startDate.addingTimeInterval(Double(duration) * 60)
-    }
-
     private var activeStudents: [Student] {
         students.filter { !$0.isArchived }
     }
 
+    /// Her hafta seçiliyse sonraki üç haftanın aynı saati de kontrol edilir.
     private var conflicts: [Lesson] {
-        lessons.filter { lesson in
+        let seconds = Double(duration) * 60
+        let slots = (0..<(repeatsWeekly ? 4 : 1)).map { startDate.adding(days: $0 * 7) }
+        return lessons.filter { lesson in
             lesson.status != .cancelled &&
-            startDate < lesson.endDate &&
-            lesson.date < endDate
+            slots.contains { $0 < lesson.endDate && lesson.date < $0.addingTimeInterval(seconds) }
         }
     }
 
@@ -121,8 +120,22 @@ struct QuickLessonFormView: View {
                     }
                 } header: {
                     Text("Zaman")
+                }
+
+                Section {
+                    Picker("Tekrar", selection: $repeatsWeekly) {
+                        Text("Bir kez").tag(false)
+                        Text("Her hafta").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                } header: {
+                    Text("Tekrar")
                 } footer: {
-                    Text("Ders planlandı olarak kaydedilir; işlenince ödeme bakiyesine yansır.")
+                    if repeatsWeekly {
+                        Text("Her \(RecurringLessonTemplate.weekdayName(Calendar.tr.component(.weekday, from: startDate))) \(Fmt.time.string(from: startDate)) otomatik planlanır. Tatil haftasında o dersi silmen yeterli; sonraki haftalar devam eder.")
+                    } else {
+                        Text("Ders planlandı olarak kaydedilir; işlenince ödeme bakiyesine yansır.")
+                    }
                 }
             }
             .scrollContentBackground(.hidden)
@@ -174,6 +187,9 @@ struct QuickLessonFormView: View {
         context.insert(lesson)
         lesson.student = student
         try? context.save()
+        if repeatsWeekly {
+            RecurringLessons.startSeries(from: lesson, in: context)
+        }
         dismiss()
     }
 }

@@ -50,7 +50,7 @@ Derslerini, ödemelerini ve ödevlerini tek defterde topla. Kimin borcu var, kim
 
 DERS PROGRAMI
 • Haftalık ve aylık takvim görünümü
-• Tekrarlayan dersleri bir kez tanımla, ileriye dönük kendiliğinden oluşsun
+• Dersi "Her hafta" olarak kaydet; sonraki haftalar kendiliğinden planlansın
 • Dersi işlendi ya da iptal olarak işaretle; iptal sebebini kaydet
 
 ÜCRET VE ÖDEME
@@ -74,7 +74,6 @@ Pro aboneliğiyle şunlar gelir:
 • Cihazlar arası eşitleme — defterin hesabına yedeklenir, yeni telefonda giriş yapman yeterli
 • PDF veli raporu — dersleri, ödevleri ve bakiyeyi tek belgede veliye gönder
 • Günlük program özeti — her sabah o günün tüm dersleri tek bildirimde
-• Sınırsız tekrarlayan ders şablonu
 • CSV dışa aktarma
 
 ABONELİK BİLGİLERİ
@@ -193,8 +192,8 @@ In-app purchase - Ders Defteri Pro (auto-renewable subscription):
 - Monthly: dersdefteri.abonelik.aylik; Yearly: dersdefteri.abonelik.yillik with a
   1-week free trial for eligible users.
 - Pro unlocks: sync across devices with an account, unlimited students
-  (free: 2), unlimited recurring lesson templates (free: 1), PDF parent
-  report, daily schedule summary notification and CSV export.
+  (free: 2), PDF parent report, daily schedule summary notification and CSV
+  export. Weekly recurring lessons are free for everyone.
 - Paywall: Summary tab -> top-right menu -> Ayarlar -> "Ders Defteri Pro'ya
   Geç". It also opens when adding a third student. The paywall shows each
   plan's title, length and price, a Restore Purchases button and links to the
@@ -282,7 +281,7 @@ Drive / Google Drive paylaşım bağlantısını (herkese açık görüntüleme)
 Ders Defteri'nin ilk sürümü.
 
 Özel ders veren öğretmenler için öğrenci, program, ödeme ve ödev defteri.
-Ders hatırlatmaları, otomatik bakiye hesabı ve tekrarlayan ders şablonlarıyla.
+Ders hatırlatmaları, otomatik bakiye hesabı ve her hafta kendiliğinden planlanan derslerle.
 ```
 
 ---
@@ -335,7 +334,6 @@ ABONELİĞİN AÇTIKLARI
 - Cihazlar arası eşitleme
 - PDF veli raporu
 - Günlük program özeti bildirimi
-- Sınırsız tekrarlayan ders şablonu (ücretsiz sürümde 1)
 - CSV dışa aktarma
 
 Abonelik sona erdiğinde hiçbir veri silinmez; kayıtlar görüntülenmeye devam

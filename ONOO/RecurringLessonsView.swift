@@ -2,7 +2,8 @@
 //  RecurringLessonsView.swift
 //  One — Ders Defteri
 //
-//  Tekrarlayan ders şablonları: liste ve ekleme/düzenleme formu.
+//  Haftalık dersler: liste ve ekleme/düzenleme formu. Kodda "şablon"
+//  (RecurringLessonTemplate) olarak geçer; kullanıcı yalnızca "haftalık ders" görür.
 //
 
 import SwiftUI
@@ -13,9 +14,7 @@ struct RecurringLessonsView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \RecurringLessonTemplate.createdAt) private var templates: [RecurringLessonTemplate]
 
-    @Environment(ProStore.self) private var proStore
     @State private var showForm = false
-    @State private var showPaywall = false
     @State private var editingTemplate: RecurringLessonTemplate?
     @State private var deletingTemplate: RecurringLessonTemplate?
 
@@ -34,16 +33,10 @@ struct RecurringLessonsView: View {
                 VStack(spacing: 12) {
                     if sortedTemplates.isEmpty {
                         EmptyStateView(icon: "repeat",
-                                       title: "Tekrarlayan ders yok",
-                                       message: "\"Her Salı 17:00\" gibi bir şablon ekle; dersler 4 hafta ilerisi için otomatik oluşturulsun.",
-                                       actionTitle: "Şablon Ekle",
-                                       action: {
-                                           if proStore.canAddTemplate(activeCount: templates.count) {
-                                               showForm = true
-                                           } else {
-                                               showPaywall = true
-                                           }
-                                       })
+                                       title: "Haftalık ders yok",
+                                       message: "\"Her Salı 17:00\" gibi bir haftalık ders ekle; dersler 4 hafta ilerisi için otomatik planlansın. Ders eklerken \"Her hafta\" seçmen de yeterli.",
+                                       actionTitle: "Haftalık Ders Ekle",
+                                       action: { showForm = true })
                     } else {
                         infoNote
                         ForEach(sortedTemplates) { template in
@@ -58,9 +51,10 @@ struct RecurringLessonsView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
                 .padding(.bottom, 24)
+                .readableWidth()
             }
             .background(Theme.paper.ignoresSafeArea())
-            .navigationTitle("Tekrarlayan Dersler")
+            .navigationTitle("Haftalık Dersler")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -68,11 +62,7 @@ struct RecurringLessonsView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        if proStore.canAddTemplate(activeCount: templates.count) {
-                            showForm = true
-                        } else {
-                            showPaywall = true
-                        }
+                        showForm = true
                     } label: {
                         Image(systemName: "plus")
                     }
@@ -81,20 +71,17 @@ struct RecurringLessonsView: View {
             .sheet(isPresented: $showForm) {
                 RecurringTemplateFormView()
             }
-            .sheet(isPresented: $showPaywall) {
-                PaywallView()
-            }
             .sheet(item: $editingTemplate) { template in
                 RecurringTemplateFormView(template: template)
             }
-            .confirmationDialog("Şablon silinsin mi?",
+            .confirmationDialog("Haftalık ders silinsin mi?",
                                 isPresented: Binding(get: { deletingTemplate != nil },
                                                      set: { if !$0 { deletingTemplate = nil } }),
                                 titleVisibility: .visible) {
-                Button("Şablonu ve Gelecek Dersleri Sil", role: .destructive) {
+                Button("Gelecek Planlı Derslerle Birlikte Sil", role: .destructive) {
                     delete(alsoUpcoming: true)
                 }
-                Button("Sadece Şablonu Sil", role: .destructive) {
+                Button("Yalnızca Tekrarı Durdur", role: .destructive) {
                     delete(alsoUpcoming: false)
                 }
                 Button("Vazgeç", role: .cancel) { deletingTemplate = nil }
@@ -108,7 +95,7 @@ struct RecurringLessonsView: View {
         HStack(spacing: 8) {
             Image(systemName: "info.circle")
                 .foregroundStyle(Theme.inkSoft)
-            Text("Dersler \(RecurringLessons.horizonDays / 7) hafta ilerisi için otomatik oluşturulur. Sildiğin bir ders geri eklenmez.")
+            Text("Dersler \(RecurringLessons.horizonDays / 7) hafta ilerisi için otomatik planlanır. Tatil haftasında o dersi silmen yeterli; seri devam eder.")
                 .font(.caption)
                 .foregroundStyle(Theme.inkSoft)
             Spacer()
@@ -127,7 +114,7 @@ struct RecurringLessonsView: View {
     }
 }
 
-// MARK: - Şablon kartı
+// MARK: - Haftalık ders kartı
 
 struct RecurringTemplateCard: View {
     @Environment(\.modelContext) private var context
@@ -192,27 +179,29 @@ struct RecurringTemplateCard: View {
     }
 }
 
-// MARK: - Şablon formu (ekle / düzenle)
+// MARK: - Haftalık ders formu (ekle / düzenle)
 
 struct RecurringTemplateFormView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @Query(sort: \Student.name) private var students: [Student]
+    @Query private var lessons: [Lesson]
 
     var template: RecurringLessonTemplate? = nil
 
     @State private var studentID: PersistentIdentifier?
-    @State private var weekday: Int
+    @State private var weekdays: Set<Int>
     @State private var time: Date
     @State private var duration: Int
     @State private var useCustomFee: Bool
     @State private var customFee: Double
     @State private var isPaused: Bool
+    @State private var confirmEnd = false
 
-    init(template: RecurringLessonTemplate? = nil) {
+    init(template: RecurringLessonTemplate? = nil, defaultStudent: Student? = nil) {
         self.template = template
-        _studentID = State(initialValue: template?.student?.persistentModelID)
-        _weekday = State(initialValue: template?.weekday ?? 3)
+        _studentID = State(initialValue: (template?.student ?? defaultStudent)?.persistentModelID)
+        _weekdays = State(initialValue: [template?.weekday ?? 3])
 
         var comps = DateComponents()
         comps.hour = template?.hour ?? 17
@@ -229,8 +218,19 @@ struct RecurringTemplateFormView: View {
         students.first { $0.persistentModelID == studentID }
     }
 
-    private var durationOptions: [Int] {
-        Array(Set([45, 60, 90, 120, 150, 180] + [duration])).sorted()
+    /// Aktif öğrenciler; arşivlenmiş bir öğrencinin dersi düzenleniyorsa o da.
+    private var chipStudents: [Student] {
+        students.filter { !$0.isArchived || $0.persistentModelID == studentID }
+    }
+
+    private var clashes: [Lesson] {
+        let t = Calendar.tr.dateComponents([.hour, .minute], from: time)
+        return RecurringLessons.clashes(weekdays: weekdays,
+                                        hour: t.hour ?? 17,
+                                        minute: t.minute ?? 0,
+                                        duration: duration,
+                                        ignoring: template,
+                                        in: lessons)
     }
 
     private var defaultFee: Double {
@@ -240,23 +240,28 @@ struct RecurringTemplateFormView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Ders") {
-                    Picker("Öğrenci", selection: $studentID) {
-                        Text("Seçiniz").tag(nil as PersistentIdentifier?)
-                        ForEach(students.filter { !$0.isArchived }) { s in
-                            Text("\(s.name) — \(s.subject)").tag(Optional(s.persistentModelID))
-                        }
-                    }
-                    Picker("Gün", selection: $weekday) {
-                        ForEach(RecurringLessonTemplate.weekdayOrder, id: \.self) { day in
-                            Text(RecurringLessonTemplate.weekdayName(day)).tag(day)
-                        }
-                    }
+                Section("Öğrenci") {
+                    StudentChipPicker(students: chipStudents, selection: $studentID)
+                        .listRowInsets(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
+                }
+
+                Section {
+                    WeekdayChipPicker(selection: $weekdays, allowsMultiple: template == nil)
                     DatePicker("Saat", selection: $time, displayedComponents: .hourAndMinute)
-                    Picker("Süre", selection: $duration) {
-                        ForEach(durationOptions, id: \.self) { d in
-                            Text("\(d) dk").tag(d)
-                        }
+                    TimeChipPicker(time: $time)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Süre (dakika)")
+                        DurationChipPicker(selection: $duration)
+                    }
+                    .padding(.vertical, 2)
+                    if !clashes.isEmpty {
+                        WeeklyClashNotice(lessons: clashes)
+                    }
+                } header: {
+                    Text(template == nil ? "Günler ve saat" : "Gün ve saat")
+                } footer: {
+                    if template == nil {
+                        Text("Birden çok gün seçersen her gün için ayrı haftalık ders oluşur.")
                     }
                 }
 
@@ -281,18 +286,33 @@ struct RecurringTemplateFormView: View {
                     Section {
                         Toggle("Duraklat", isOn: $isPaused)
                     } footer: {
-                        Text("Duraklatılan şablon yeni ders üretmez; mevcut dersler silinmez.")
+                        Text("Duraklatılan haftalık ders yeni ders planlamaz; mevcut dersler silinmez.")
+                    }
+                }
+
+                if template != nil {
+                    Section {
+                        Button("Haftalık Dersi Bitir", role: .destructive) { confirmEnd = true }
                     }
                 }
 
                 Section {
                 } footer: {
-                    Text("Dersler \(RecurringLessons.horizonDays / 7) hafta ilerisi için otomatik oluşturulur. Gün veya saat değişirse gelecek planlanan dersler yeniden düzenlenir.")
+                    Text(template == nil
+                         ? "Dersler \(RecurringLessons.horizonDays / 7) hafta ilerisi için otomatik planlanır."
+                         : "Gün, saat, süre ya da ücret değişirse gelecekteki planlı dersler yeni düzene taşınır; konu ve notları korunur.")
                 }
             }
             .scrollContentBackground(.hidden)
             .background(Theme.paper)
-            .navigationTitle(template == nil ? "Yeni Tekrarlayan Ders" : "Şablonu Düzenle")
+            .navigationTitle(template == nil ? "Yeni Haftalık Ders" : "Haftalık Ders")
+            .confirmationDialog("Haftalık ders bitirilsin mi?", isPresented: $confirmEnd, titleVisibility: .visible) {
+                Button("Gelecek Planlı Dersleri de Sil", role: .destructive) { end(alsoUpcoming: true) }
+                Button("Planlı Dersler Kalsın", role: .destructive) { end(alsoUpcoming: false) }
+                Button("Vazgeç", role: .cancel) {}
+            } message: {
+                Text("İşlenmiş dersler her durumda korunur.")
+            }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -300,10 +320,21 @@ struct RecurringTemplateFormView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Kaydet") { save() }
-                        .disabled(studentID == nil)
+                        .disabled(studentID == nil || weekdays.isEmpty)
                 }
             }
         }
+    }
+
+    private func end(alsoUpcoming: Bool) {
+        guard let template else { return }
+        if alsoUpcoming {
+            RecurringLessons.endSeries(template, after: Date(), in: context)
+        } else {
+            context.delete(template)
+            try? context.save()
+        }
+        dismiss()
     }
 
     private func save() {
@@ -314,36 +345,78 @@ struct RecurringTemplateFormView: View {
         let fee: Double? = useCustomFee ? customFee : nil
 
         if let template {
-            let scheduleChanged = template.weekday != weekday
+            let newWeekday = weekdays.first ?? template.weekday
+            let scheduleChanged = template.weekday != newWeekday
                 || template.hour != hour
                 || template.minute != minute
                 || template.duration != duration
-            template.student = student
-            template.weekday = weekday
-            template.hour = hour
-            template.minute = minute
-            template.duration = duration
-            template.feeOverride = fee
-            template.usesCustomFee = useCustomFee
+                || template.usesCustomFee != useCustomFee
+                || (useCustomFee && template.feeOverride != fee)
+            if template.student?.persistentModelID != student.persistentModelID {
+                // Gelecek planlı dersler de yeni öğrenciye geçer.
+                for lesson in template.allGeneratedLessons where lesson.status == .planned && lesson.date > Date() {
+                    lesson.student = student
+                }
+                template.student = student
+            }
             template.isPaused = isPaused
             if scheduleChanged {
-                RecurringLessons.regenerate(template, in: context)
+                // Silip yeniden üretmek yerine taşır: konu ve notlar kalır.
+                RecurringLessons.applyToFollowing(template: template,
+                                                  from: Date(),
+                                                  dayShift: RecurringLessons.dayShift(fromWeekday: template.weekday,
+                                                                                      toWeekday: newWeekday),
+                                                  weekday: newWeekday,
+                                                  hour: hour,
+                                                  minute: minute,
+                                                  duration: duration,
+                                                  feeOverride: fee,
+                                                  usesCustomFee: useCustomFee,
+                                                  in: context)
             } else {
                 try? context.save()
                 RecurringLessons.topUp(context: context)
             }
         } else {
-            let new = RecurringLessonTemplate(weekday: weekday,
-                                              hour: hour,
-                                              minute: minute,
-                                              duration: duration,
-                                              feeOverride: fee,
-                                              usesCustomFee: useCustomFee)
-            context.insert(new)
-            new.student = student
+            for weekday in weekdays {
+                let new = RecurringLessonTemplate(weekday: weekday,
+                                                  hour: hour,
+                                                  minute: minute,
+                                                  duration: duration,
+                                                  feeOverride: fee,
+                                                  usesCustomFee: useCustomFee)
+                context.insert(new)
+                new.student = student
+            }
             try? context.save()
             RecurringLessons.topUp(context: context)
         }
         dismiss()
+    }
+}
+
+// MARK: - Çakışma uyarısı
+
+/// Haftalık ders formlarında: seçilen saatte başka ders olan haftalar
+/// atlanır; kullanıcı bunu kaydetmeden görsün.
+struct WeeklyClashNotice: View {
+    let lessons: [Lesson]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("Bu saatte ders var", systemImage: "exclamationmark.triangle.fill")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Theme.red)
+            Text(lessons.prefix(3).map { lesson in
+                "\(Fmt.dayMonthShort.string(from: lesson.date)) \(Fmt.time.string(from: lesson.date)) - \(lesson.student?.name ?? "Öğrenci")"
+            }
+            .joined(separator: "\n"))
+                .font(.caption)
+                .foregroundStyle(Theme.inkSoft)
+            Text("Çakışan haftalarda ders oluşturulmaz.")
+                .font(.caption)
+                .foregroundStyle(Theme.inkSoft)
+        }
+        .padding(.vertical, 4)
     }
 }

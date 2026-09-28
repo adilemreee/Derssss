@@ -74,6 +74,12 @@ struct StudentChipPicker: View {
                         proxy.scrollTo(selection, anchor: .center)
                     }
                 }
+                // Kenarda yarım görünen çip seçilince ortaya gelsin.
+                .onChange(of: selection) { _, new in
+                    if let new {
+                        withAnimation(.snappy) { proxy.scrollTo(new, anchor: .center) }
+                    }
+                }
             }
         }
     }
@@ -183,5 +189,34 @@ struct TimeChipPicker: View {
 
     private func isSelected(_ hour: Int) -> Bool {
         Calendar.tr.component(.hour, from: time) == hour && Calendar.tr.component(.minute, from: time) == 0
+    }
+}
+
+// MARK: - Haftanın günleri
+
+/// Pazartesi'den başlayan kısa gün adları. Yeni haftalık derste birden çok
+/// gün seçilebilir (Salı ve Perşembe gibi); düzenlemede tek gün.
+struct WeekdayChipPicker: View {
+    @Binding var selection: Set<Int>
+    var allowsMultiple = true
+
+    private static let shortNames = [2: "Pzt", 3: "Sal", 4: "Çar", 5: "Per", 6: "Cum", 7: "Cmt", 1: "Paz"]
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(RecurringLessonTemplate.weekdayOrder, id: \.self) { day in
+                Button {
+                    if allowsMultiple {
+                        if selection.contains(day) { selection.remove(day) } else { selection.insert(day) }
+                    } else {
+                        selection = [day]
+                    }
+                } label: {
+                    FormChip(title: Self.shortNames[day] ?? "", isSelected: selection.contains(day), fillsWidth: true)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(RecurringLessonTemplate.weekdayName(day))
+            }
+        }
     }
 }

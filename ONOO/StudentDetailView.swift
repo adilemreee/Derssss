@@ -31,6 +31,10 @@ struct StudentDetailView: View {
     @State private var showReminder = false
     @State private var editingLesson: Lesson?
     @State private var cancellationTarget: Lesson?
+    @State private var pendingDelete: Lesson?
+    @State private var stopRepeatTarget: Lesson?
+    @State private var editingTemplate: RecurringLessonTemplate?
+    @State private var showWeeklyForm = false
     @State private var confirmDelete = false
 
     var body: some View {
@@ -101,6 +105,14 @@ struct StudentDetailView: View {
         .sheet(item: $editingLesson) { lesson in
             LessonFormView(lesson: lesson)
         }
+        .sheet(item: $editingTemplate) { template in
+            RecurringTemplateFormView(template: template)
+        }
+        .sheet(isPresented: $showWeeklyForm) {
+            RecurringTemplateFormView(defaultStudent: student)
+        }
+        .lessonDeleteDialog($pendingDelete, context: context)
+        .stopRepeatingDialog($stopRepeatTarget, context: context)
         .confirmationDialog("İptal sebebi seç",
                             isPresented: Binding(
                                 get: { cancellationTarget != nil },
@@ -119,6 +131,7 @@ struct StudentDetailView: View {
     private var header: some View {
         VStack(spacing: 14) {
             profileRow
+            weeklyRow
             Divider()
             statsRow
             quickActions
@@ -149,6 +162,74 @@ struct StudentDetailView: View {
             }
             Spacer(minLength: 0)
         }
+    }
+
+    // MARK: - Haftalık program
+
+    private var weeklyTemplates: [RecurringLessonTemplate] {
+        student.allRecurringTemplates.sorted { a, b in
+            let ai = RecurringLessonTemplate.weekdayOrder.firstIndex(of: a.weekday) ?? 0
+            let bi = RecurringLessonTemplate.weekdayOrder.firstIndex(of: b.weekday) ?? 0
+            if ai != bi { return ai < bi }
+            return (a.hour, a.minute) < (b.hour, b.minute)
+        }
+    }
+
+    /// "Her Salı 17:00 · 90 dk" çipleri; dokununca haftalık ders düzenlenir.
+    @ViewBuilder
+    private var weeklyRow: some View {
+        let templates = weeklyTemplates
+        if !templates.isEmpty || !student.isArchived {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(templates) { template in
+                        Button {
+                            editingTemplate = template
+                        } label: {
+                            weeklyChip(template)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    if !student.isArchived {
+                        Button {
+                            showWeeklyForm = true
+                        } label: {
+                            Label(templates.isEmpty ? "Haftalık ders ekle" : "Ekle", systemImage: "plus")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(Theme.accent)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 7)
+                                .overlay(Capsule().strokeBorder(Theme.line, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
+                                .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.vertical, 1)
+            }
+            .scrollClipDisabled()
+        }
+    }
+
+    private func weeklyChip(_ template: RecurringLessonTemplate) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: template.isPaused ? "pause.fill" : "repeat")
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(template.isPaused ? Theme.inkSoft : student.color)
+            Text("\(template.weekdayName) \(template.timeText)")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.ink)
+            Text("· \(template.duration) dk")
+                .font(.caption)
+                .foregroundStyle(Theme.inkSoft)
+        }
+        .monospacedDigit()
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(Capsule().fill(student.color.opacity(template.isPaused ? 0.05 : 0.12)))
+        .opacity(template.isPaused ? 0.6 : 1)
+        .accessibilityLabel("Her \(template.weekdayName) \(template.timeText), \(template.duration) dakika\(template.isPaused ? ", duraklatıldı" : "")")
+        .accessibilityHint("Düzenlemek için dokun")
     }
 
     private var statsRow: some View {
@@ -317,25 +398,34 @@ struct StudentDetailView: View {
                                 }
                             }
                             Divider()
-                            Button {
-                                LessonActions.copyNextWeek(lesson, in: context)
-                            } label: {
-                                Label("Haftaya Aynı Ders", systemImage: "calendar.badge.plus")
+                            if lesson.sourceTemplate == nil {
+                                Button {
+                                    LessonActions.copyNextWeek(lesson, in: context)
+                                } label: {
+                                    Label("Haftaya Aynı Ders", systemImage: "calendar.badge.plus")
+                                }
                             }
                             Button {
                                 showLessonForm = true
                             } label: {
                                 Label("Aynı Öğrenciye Yeni Ders", systemImage: "person.crop.circle.badge.plus")
                             }
-                            Button {
-                                LessonActions.copyFourWeeks(lesson, in: context)
-                            } label: {
-                                Label("4 Hafta Tekrar Oluştur", systemImage: "repeat")
+                            if lesson.sourceTemplate == nil {
+                                Button {
+                                    LessonActions.makeWeekly(lesson, in: context)
+                                } label: {
+                                    Label("Her Hafta Tekrarla", systemImage: "repeat")
+                                }
+                            } else {
+                                Button(role: .destructive) {
+                                    stopRepeatTarget = lesson
+                                } label: {
+                                    Label("Tekrarı Durdur", systemImage: "repeat.circle")
+                                }
                             }
                             Divider()
                             Button(role: .destructive) {
-                                context.delete(lesson)
-                                try? context.save()
+                                pendingDelete = lesson
                             } label: {
                                 Label("Sil", systemImage: "trash")
                             }

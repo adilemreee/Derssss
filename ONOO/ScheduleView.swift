@@ -80,6 +80,7 @@ struct ScheduleView: View {
                     } label: {
                         Image(systemName: "repeat")
                     }
+                    .accessibilityLabel("Haftalık Dersler")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -247,6 +248,8 @@ struct ScheduleLessonCard: View {
     var onEdit: () -> Void
     @State private var showSameStudentForm = false
     @State private var showCancellationReasons = false
+    @State private var pendingDelete: Lesson?
+    @State private var stopRepeatTarget: Lesson?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -340,25 +343,34 @@ struct ScheduleLessonCard: View {
             }
             Button { onEdit() } label: { Label("Düzenle", systemImage: "pencil") }
             Divider()
-            Button {
-                LessonActions.copyNextWeek(lesson, in: context)
-            } label: {
-                Label("Haftaya Aynı Ders", systemImage: "calendar.badge.plus")
+            if lesson.sourceTemplate == nil {
+                Button {
+                    LessonActions.copyNextWeek(lesson, in: context)
+                } label: {
+                    Label("Haftaya Aynı Ders", systemImage: "calendar.badge.plus")
+                }
             }
             Button {
                 showSameStudentForm = true
             } label: {
                 Label("Aynı Öğrenciye Yeni Ders", systemImage: "person.crop.circle.badge.plus")
             }
-            Button {
-                LessonActions.copyFourWeeks(lesson, in: context)
-            } label: {
-                Label("4 Hafta Tekrar Oluştur", systemImage: "repeat")
+            if lesson.sourceTemplate == nil {
+                Button {
+                    LessonActions.makeWeekly(lesson, in: context)
+                } label: {
+                    Label("Her Hafta Tekrarla", systemImage: "repeat")
+                }
+            } else {
+                Button(role: .destructive) {
+                    stopRepeatTarget = lesson
+                } label: {
+                    Label("Tekrarı Durdur", systemImage: "repeat.circle")
+                }
             }
             Divider()
             Button(role: .destructive) {
-                context.delete(lesson)
-                try? context.save()
+                pendingDelete = lesson
             } label: {
                 Label("Sil", systemImage: "trash")
             }
@@ -366,6 +378,8 @@ struct ScheduleLessonCard: View {
         .sheet(isPresented: $showSameStudentForm) {
             LessonFormView(defaultStudent: lesson.student, defaultDate: lesson.date.adding(days: 7))
         }
+        .lessonDeleteDialog($pendingDelete, context: context)
+        .stopRepeatingDialog($stopRepeatTarget, context: context)
         .confirmationDialog("İptal sebebi seç", isPresented: $showCancellationReasons, titleVisibility: .visible) {
             Button(CancellationReason.student.title) { cancelLesson(.student) }
             Button(CancellationReason.teacher.title) { cancelLesson(.teacher) }
@@ -684,8 +698,12 @@ struct LessonFormView: View {
     @State private var useCustomFee: Bool
     @State private var customFee: Double
     @State private var cancellationReason: CancellationReason
-    @State private var repeatWeeks: Int = 0
+    /// Yeni ders ya da henüz seride olmayan ders için: bir kez mi, her hafta mı.
+    @State private var repeatsWeekly = false
     @State private var showConflictAlert = false
+    @State private var showSeriesChoice = false
+    @State private var pendingDelete: Lesson?
+    @State private var stopRepeatTarget: Lesson?
 
     init(lesson: Lesson? = nil, defaultStudent: Student? = nil, defaultDate: Date = Date()) {
         self.lesson = lesson
@@ -783,20 +801,12 @@ struct LessonFormView: View {
                     }
                 }
 
-                if lesson == nil {
-                    Section("Tekrar") {
-                        Stepper(repeatWeeks == 0 ? "Tekrar yok"
-                                                 : "Sonraki \(repeatWeeks) hafta aynı gün/saat",
-                                value: $repeatWeeks, in: 0...12)
-                    }
-                }
+                repeatSection
 
                 if let lesson {
                     Section {
                         Button("Dersi Sil", role: .destructive) {
-                            context.delete(lesson)
-                            try? context.save()
-                            dismiss()
+                            pendingDelete = lesson
                         }
                     }
                 }
@@ -815,10 +825,54 @@ struct LessonFormView: View {
                 }
             }
             .alert("Ders çakışması var", isPresented: $showConflictAlert) {
-                Button("Yine de Kaydet", role: .destructive) { save() }
+                Button("Yine de Kaydet", role: .destructive) { proceedSave() }
                 Button("Düzenle", role: .cancel) {}
             } message: {
                 Text(conflictAlertText)
+            }
+            .confirmationDialog("Bu ders her hafta tekrarlanıyor",
+                                isPresented: $showSeriesChoice, titleVisibility: .visible) {
+                Button("Yalnızca Bu Ders") { save(scope: .onlyThis) }
+                Button("Bu ve Sonraki Dersler") { save(scope: .thisAndFollowing) }
+                Button("Vazgeç", role: .cancel) {}
+            } message: {
+                Text("Değişiklik yalnızca bu derse mi, sonraki haftalara da mı uygulansın?")
+            }
+            .lessonDeleteDialog($pendingDelete, context: context, onDeleted: { dismiss() })
+            .stopRepeatingDialog($stopRepeatTarget, context: context)
+        }
+    }
+
+    // MARK: - Tekrar
+
+    /// Serideki derste tekrar bilgisi ve durdurma; diğerlerinde bir kez / her hafta.
+    @ViewBuilder
+    private var repeatSection: some View {
+        Section {
+            if let series = lesson?.sourceTemplate {
+                HStack {
+                    Label("Her \(series.weekdayName) \(series.timeText)", systemImage: "repeat")
+                        .foregroundStyle(Theme.ink)
+                    Spacer()
+                    Button("Tekrarı Durdur", role: .destructive) {
+                        stopRepeatTarget = lesson
+                    }
+                    .font(.subheadline)
+                }
+            } else {
+                Picker("Tekrar", selection: $repeatsWeekly) {
+                    Text("Bir kez").tag(false)
+                    Text("Her hafta").tag(true)
+                }
+                .pickerStyle(.segmented)
+            }
+        } header: {
+            Text("Tekrar")
+        } footer: {
+            if lesson?.sourceTemplate != nil {
+                Text("Gününü, saatini, süresini ya da ücretini değiştirirsen yalnızca bu dersi mi, sonrakileri de mi değiştireceğin sorulur.")
+            } else if repeatsWeekly {
+                Text("Her \(RecurringLessonTemplate.weekdayName(Calendar.tr.component(.weekday, from: startDate))) \(Fmt.time.string(from: startDate)) otomatik planlanır. Tatil haftasında o dersi silmen yeterli; sonraki haftalar devam eder.")
             }
         }
     }
@@ -835,14 +889,19 @@ struct LessonFormView: View {
         .padding(.vertical, 4)
     }
 
-    private var proposedSlots: [(start: Date, end: Date)] {
+    private var startDate: Date {
         let cal = Calendar.tr
         var comps = cal.dateComponents([.year, .month, .day], from: day)
         let t = cal.dateComponents([.hour, .minute], from: time)
         comps.hour = t.hour
         comps.minute = t.minute
-        let start = cal.date(from: comps) ?? day
-        let count = lesson == nil ? repeatWeeks : 0
+        return cal.date(from: comps) ?? day
+    }
+
+    private var proposedSlots: [(start: Date, end: Date)] {
+        let start = startDate
+        // Her hafta seçiliyse ilk dört haftanın çakışması da kontrol edilir.
+        let count = (lesson?.sourceTemplate == nil && repeatsWeekly) ? 3 : 0
         return (0...count).map { offset in
             let slotStart = start.adding(days: 7 * offset)
             return (slotStart, slotStart.addingTimeInterval(Double(duration) * 60))
@@ -870,23 +929,57 @@ struct LessonFormView: View {
 
     private func attemptSave() {
         if conflictingLessons.isEmpty {
-            save()
+            proceedSave()
         } else {
             showConflictAlert = true
         }
     }
 
-    private func save() {
+    private enum SaveScope {
+        case onlyThis, thisAndFollowing
+    }
+
+    /// Serideki bir dersin zamanı, süresi ya da ücreti değiştiyse kapsam sorulur.
+    private func proceedSave() {
+        if let lesson, lesson.sourceTemplate != nil,
+           lesson.student?.persistentModelID == studentID,
+           seriesFieldsChanged(lesson) {
+            showSeriesChoice = true
+        } else {
+            save(scope: .onlyThis)
+        }
+    }
+
+    private func seriesFieldsChanged(_ lesson: Lesson) -> Bool {
+        abs(lesson.date.timeIntervalSince(startDate)) > 30
+            || lesson.duration != duration
+            || lesson.usesCustomFee != useCustomFee
+            || (useCustomFee && abs((lesson.feeOverride ?? 0) - customFee) > 0.001)
+    }
+
+    private func save(scope: SaveScope) {
         guard let student = selectedStudent else { return }
-        let cal = Calendar.tr
-        var comps = cal.dateComponents([.year, .month, .day], from: day)
-        let t = cal.dateComponents([.hour, .minute], from: time)
-        comps.hour = t.hour
-        comps.minute = t.minute
-        let start = cal.date(from: comps) ?? day
+        let start = startDate
         let fee = useCustomFee ? customFee : Lesson.standardFee(for: student, duration: duration)
 
         if let lesson {
+            let studentChanged = lesson.student?.persistentModelID != student.persistentModelID
+            if scope == .thisAndFollowing, let template = lesson.sourceTemplate {
+                // Sonraki dersler silinip yeniden üretilmez, taşınır: konu ve notlar kalır.
+                RecurringLessons.applyToFollowing(template: template,
+                                                  from: lesson.date,
+                                                  excluding: lesson,
+                                                  dayShift: RecurringLessons.dayShift(from: lesson.date, to: start),
+                                                  weekday: Calendar.tr.component(.weekday, from: start),
+                                                  hour: Calendar.tr.component(.hour, from: start),
+                                                  minute: Calendar.tr.component(.minute, from: start),
+                                                  duration: duration,
+                                                  feeOverride: useCustomFee ? customFee : nil,
+                                                  usesCustomFee: useCustomFee,
+                                                  in: context)
+            }
+            // Başka öğrenciye taşınan ders o öğrencinin serisinden çıkar.
+            if studentChanged { lesson.sourceTemplate = nil }
             lesson.student = student
             lesson.date = start
             lesson.duration = duration
@@ -896,22 +989,26 @@ struct LessonFormView: View {
             lesson.note = note
             lesson.feeOverride = fee
             lesson.usesCustomFee = useCustomFee
+            try? context.save()
+            if repeatsWeekly && lesson.sourceTemplate == nil {
+                RecurringLessons.startSeries(from: lesson, in: context)
+            }
         } else {
-            for i in 0...repeatWeeks {
-                let lessonDate = start.adding(days: 7 * i)
-                let new = Lesson(date: lessonDate,
-                                 duration: duration,
-                                 status: i == 0 ? status : .planned,
-                                 cancellationReason: i == 0 && status == .cancelled ? cancellationReason : .none,
-                                 topic: i == 0 ? topic : "",
-                                 note: i == 0 ? note : "",
-                                 feeOverride: fee,
-                                 usesCustomFee: useCustomFee)
-                context.insert(new)
-                new.student = student
+            let new = Lesson(date: start,
+                             duration: duration,
+                             status: status,
+                             cancellationReason: status == .cancelled ? cancellationReason : .none,
+                             topic: topic,
+                             note: note,
+                             feeOverride: fee,
+                             usesCustomFee: useCustomFee)
+            context.insert(new)
+            new.student = student
+            try? context.save()
+            if repeatsWeekly {
+                RecurringLessons.startSeries(from: new, in: context)
             }
         }
-        try? context.save()
         dismiss()
     }
 }

@@ -276,6 +276,7 @@ struct StudentCard: View {
 struct StudentFormView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
+    @Query private var allLessons: [Lesson]
 
     var student: Student? = nil
 
@@ -289,6 +290,10 @@ struct StudentFormView: View {
     @State private var startDate: Date
     @State private var colorIndex: Int
     @State private var notes: String
+    // Yalnızca yeni öğrencide: haftalık ders günleri
+    @State private var weeklyDays: Set<Int> = []
+    @State private var weeklyTime: Date = Calendar.tr.date(bySettingHour: 17, minute: 0, second: 0, of: Date()) ?? Date()
+    @State private var weeklyDuration = 60
 
     private let subjectSuggestions = ["Matematik", "Fizik", "Kimya", "Biyoloji", "İngilizce", "Türkçe", "Edebiyat", "Tarih"]
 
@@ -340,6 +345,31 @@ struct StudentFormView: View {
                         Text("₺")
                             .foregroundStyle(Theme.inkSoft)
                     }
+                }
+
+                if student == nil {
+                    Section {
+                        WeekdayChipPicker(selection: $weeklyDays)
+                        if !weeklyDays.isEmpty {
+                            DatePicker("Saat", selection: $weeklyTime, displayedComponents: .hourAndMinute)
+                            TimeChipPicker(time: $weeklyTime)
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Süre (dakika)")
+                                DurationChipPicker(selection: $weeklyDuration)
+                            }
+                            .padding(.vertical, 2)
+                            if !weeklyClashes.isEmpty {
+                                WeeklyClashNotice(lessons: weeklyClashes)
+                            }
+                        }
+                    } header: {
+                        Text("Haftalık ders")
+                    } footer: {
+                        Text(weeklyDays.isEmpty
+                             ? "İsteğe bağlı. Gün seçersen dersler her hafta kendiliğinden planlanır."
+                             : "Dersler \(RecurringLessons.horizonDays / 7) hafta ilerisi için planlanır; sonra kendiliğinden devam eder.")
+                    }
+                    .animation(.snappy, value: weeklyDays.isEmpty)
                 }
 
                 Section("İletişim") {
@@ -396,6 +426,16 @@ struct StudentFormView: View {
         }
     }
 
+    private var weeklyClashes: [Lesson] {
+        guard student == nil, !weeklyDays.isEmpty else { return [] }
+        let t = Calendar.tr.dateComponents([.hour, .minute], from: weeklyTime)
+        return RecurringLessons.clashes(weekdays: weeklyDays,
+                                        hour: t.hour ?? 17,
+                                        minute: t.minute ?? 0,
+                                        duration: weeklyDuration,
+                                        in: allLessons)
+    }
+
     private func save() {
         if let student {
             if abs(student.hourlyRate - hourlyRate) > 0.001 {
@@ -423,6 +463,23 @@ struct StudentFormView: View {
                               colorIndex: colorIndex,
                               notes: notes)
             context.insert(new)
+            if !weeklyDays.isEmpty {
+                let t = Calendar.tr.dateComponents([.hour, .minute], from: weeklyTime)
+                for weekday in weeklyDays {
+                    let template = RecurringLessonTemplate(weekday: weekday,
+                                                           hour: t.hour ?? 17,
+                                                           minute: t.minute ?? 0,
+                                                           duration: weeklyDuration)
+                    context.insert(template)
+                    template.student = new
+                    // İleri tarihli başlangıçta dersler o günden itibaren planlanır.
+                    if startDate.startOfDay > Date() {
+                        template.generatedUntil = startDate.startOfDay
+                    }
+                }
+                try? context.save()
+                RecurringLessons.topUp(context: context)
+            }
         }
         try? context.save()
         dismiss()

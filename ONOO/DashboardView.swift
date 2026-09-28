@@ -22,6 +22,7 @@ struct DashboardView: View {
     @State private var showQuickLesson = false
     @State private var newLessonForStudentFrom: Lesson?
     @State private var cancellationTarget: Lesson?
+    @State private var stopRepeatTarget: Lesson?
 
     private struct UpcomingDayGroup: Identifiable {
         let date: Date
@@ -88,6 +89,7 @@ struct DashboardView: View {
             .sheet(item: $newLessonForStudentFrom) { lesson in
                 LessonFormView(defaultStudent: lesson.student, defaultDate: lesson.date.adding(days: 7))
             }
+            .stopRepeatingDialog($stopRepeatTarget, context: context)
             .confirmationDialog("İptal sebebi seç",
                                 isPresented: Binding(
                                     get: { cancellationTarget != nil },
@@ -329,20 +331,30 @@ struct DashboardView: View {
             }
         }
         Divider()
-        Button {
-            LessonActions.copyNextWeek(lesson, in: context)
-        } label: {
-            Label("Haftaya Aynı Ders", systemImage: "calendar.badge.plus")
+        if lesson.sourceTemplate == nil {
+            Button {
+                LessonActions.copyNextWeek(lesson, in: context)
+            } label: {
+                Label("Haftaya Aynı Ders", systemImage: "calendar.badge.plus")
+            }
         }
         Button {
             newLessonForStudentFrom = lesson
         } label: {
             Label("Aynı Öğrenciye Yeni Ders", systemImage: "person.crop.circle.badge.plus")
         }
-        Button {
-            LessonActions.copyFourWeeks(lesson, in: context)
-        } label: {
-            Label("4 Hafta Tekrar Oluştur", systemImage: "repeat")
+        if lesson.sourceTemplate == nil {
+            Button {
+                LessonActions.makeWeekly(lesson, in: context)
+            } label: {
+                Label("Her Hafta Tekrarla", systemImage: "repeat")
+            }
+        } else {
+            Button(role: .destructive) {
+                stopRepeatTarget = lesson
+            } label: {
+                Label("Tekrarı Durdur", systemImage: "repeat.circle")
+            }
         }
     }
 

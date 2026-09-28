@@ -212,7 +212,6 @@ değil).
 |---|---|---|
 | Cihazlar arası eşitleme | — | ✓ |
 | Aktif öğrenci | 2 | Sınırsız |
-| Tekrarlayan ders şablonu | 1 | Sınırsız |
 | PDF veli raporu | — | ✓ |
 | Günlük program özeti bildirimi | — | ✓ |
 | CSV dışa aktarma | — | ✓ |

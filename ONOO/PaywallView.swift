@@ -89,7 +89,6 @@ struct PaywallView: View {
             featureItem("Cihazlar arası eşitleme ve yedek")
             featureItem("PDF veli raporu")
             featureItem("Her sabah günlük program özeti")
-            featureItem("Sınırsız tekrarlayan ders", note: "ücretsizde \(ProStore.freeTemplateLimit)")
             featureItem("CSV dışa aktarma")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -163,6 +162,7 @@ struct PaywallView: View {
                         Text(isYearly ? "Yıllık" : "Aylık")
                             .font(.subheadline.weight(.bold))
                             .foregroundStyle(Theme.ink)
+                            .fixedSize()
                         if isYearly, let percent = store.yearlySavingsPercent {
                             Chip(text: "%\(percent) avantajlı", tint: Theme.green, filled: true)
                         }

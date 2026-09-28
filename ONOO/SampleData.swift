@@ -56,14 +56,27 @@ enum SampleData {
             // Son dört hafta işlenmiş, bu hafta ve gelecek hafta planlı dersler.
             // İlk iki öğrencinin dersi bugün, diğerleri hafta içine dağılır.
             let offset = i < 2 ? 0 : i - 1
+            let duration = i == 2 ? 60 : 90
+            // İlk üç öğrencinin dersleri haftalık seri; sonuncusu tek tek
+            // eklenmiş, "Haftalık ders ekle" boş hâli görülsün.
+            var template: RecurringLessonTemplate?
+            if i < 3 {
+                let t = RecurringLessonTemplate(weekday: Calendar.tr.component(.weekday, from: at(offset, seed.hour)),
+                                                hour: seed.hour, duration: duration)
+                context.insert(t)
+                t.student = student
+                t.generatedUntil = at(offset + 7, seed.hour).addingTimeInterval(60)
+                template = t
+            }
             for week in -4...1 {
                 let day = offset + week * 7
                 let date = at(day, seed.hour)
                 let status: LessonStatus = date < Date() ? .completed : .planned
-                let lesson = Lesson(student: student, date: date, duration: i == 2 ? 60 : 90,
+                let lesson = Lesson(student: student, date: date, duration: duration,
                                     status: status, topic: seed.topics[(week + 4) % seed.topics.count])
                 lesson.lockCurrentStandardFeeIfNeeded()
                 context.insert(lesson)
+                lesson.sourceTemplate = template
             }
 
             // Tahsilat öğrenciden öğrenciye farklı: biri avanslı, biri çok borçlu.

@@ -17,8 +17,6 @@ final class ProStore {
 
     /// Ücretsiz sürümde izin verilen aktif öğrenci sayısı
     static let freeStudentLimit = 2
-    /// Ücretsiz sürümde izin verilen tekrarlayan ders şablonu sayısı
-    static let freeTemplateLimit = 1
 
     /// Uygulama genelindeki kilitler buna bakar.
     ///
@@ -70,10 +68,6 @@ final class ProStore {
 
     func canAddStudent(activeCount: Int) -> Bool {
         isPro || activeCount < Self.freeStudentLimit
-    }
-
-    func canAddTemplate(activeCount: Int) -> Bool {
-        isPro || activeCount < Self.freeTemplateLimit
     }
 
     func loadProducts() async {
