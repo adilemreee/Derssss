@@ -76,7 +76,10 @@ model Lesson {
 
   studentClientId String?   @db.Uuid
   templateClientId String?  @db.Uuid
+  /// Kaldırılan ders paketlerinden kalma; yeni sürümler kullanmaz.
   packageClientId String?   @db.Uuid
+  /// Toplu ödeme: dersi kapsayan ödemenin clientId'si
+  paymentClientId String?   @db.Uuid
 
   date            DateTime
   duration        Int       @default(60)
@@ -169,8 +172,8 @@ model RecurringTemplate {
   @@map("recurring_templates")
 }
 
-/// Peşin satılan ders paketi ("10 ders, 8.000 ₺"). Hangi dersin hangi
-/// paketten düştüğü dersin `packageClientId` alanındadır.
+/// Kaldırılan ders paketi özelliğinden kalma tablo; uygulamanın yeni
+/// sürümleri kullanmaz, eski deneme sürümleri için yerinde duruyor.
 model LessonPackage {
   id              String    @id @default(uuid())
   userId          String

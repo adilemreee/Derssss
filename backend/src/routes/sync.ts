@@ -67,6 +67,9 @@ const lessonSchema = z.object({
   studentClientId: uuid().nullable().optional(),
   templateClientId: uuid().nullable().optional(),
   packageClientId: uuid().nullable().optional(),
+  // Açık null: ders toplu ödemeden çıkarıldı. Alan hiç gelmezse (eski
+  // sürüm) sunucudaki bağ olduğu gibi kalır.
+  paymentClientId: uuid().nullable().optional(),
   date: z.coerce.date(),
   duration: z.number().int().min(0).max(24 * 60).default(60),
   status: z.enum(['planned', 'completed', 'cancelled']).default('planned'),
@@ -252,6 +255,8 @@ export async function syncRoutes(app: FastifyInstance) {
       homeworks,
       templates,
       packages,
+      // Uygulama bu işareti görmeden derslerdeki ödeme bağına dokunmaz.
+      lessonPayments: true,
     });
   });
 }
