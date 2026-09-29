@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import Charts
 import SwiftData
 
 struct PaymentsView: View {
@@ -80,69 +79,131 @@ struct PaymentsView: View {
 
     // MARK: - Tahsilat kartı
 
-    /// İki büyük sayı kartı yerine tek kart: bu ay, bekleyen ve son altı ayın
-    /// tahsilatı. Hem daha az yer kaplar hem gidişatı gösterir.
+    /// Üstte bu ayın tahsilatı ve geçen ayla kıyası, altta bekleyen / avans /
+    /// bu ay işlenen. Grafik bilerek yok: çoğu ay tek çubuk kalıyor ve bir
+    /// şey anlatmıyordu.
     private var collectionCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Bu ay tahsilat")
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(Fmt.monthName(Date())) tahsilatı")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(Theme.inkSoft)
                     Text(Fmt.money(monthCollected))
-                        .monospacedDigit()
-                        .font(.title2.weight(.bold))
+                        .font(.largeTitle.weight(.bold))
                         .fontDesign(.serif)
                         .foregroundStyle(Theme.ink)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                        .contentTransition(.numericText())
+                    if let comparison = lastMonthComparison {
+                        Text(comparison)
+                            .font(.caption)
+                            .foregroundStyle(Theme.inkSoft)
+                    }
                 }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("Bekleyen")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Theme.inkSoft)
-                    Text(Fmt.money(pendingTotal))
-                        .monospacedDigit()
-                        .font(.headline.weight(.bold))
-                        .fontDesign(.serif)
-                        .foregroundStyle(pendingTotal > 0.5 ? Theme.red : Theme.ink)
+                Spacer(minLength: 8)
+                if let delta = monthDelta {
+                    DeltaChip(percent: delta)
                 }
             }
 
-            Chart(monthlyTotals) { item in
-                BarMark(x: .value("Ay", item.label),
-                        y: .value("Tahsilat", item.total))
-                    .foregroundStyle(item.isCurrent ? Theme.green : Theme.green.opacity(0.35))
-                    .cornerRadius(4)
+            Divider()
+
+            HStack(alignment: .top, spacing: 0) {
+                kpi(title: "Bekleyen",
+                    value: Fmt.money(pendingTotal),
+                    detail: pendingDetail,
+                    icon: "hourglass",
+                    tint: pendingTotal > 0.5 ? Theme.red : Theme.inkSoft,
+                    valueTint: pendingTotal > 0.5 ? Theme.red : Theme.ink)
+                kpi(title: "Avans",
+                    value: Fmt.money(advanceTotal),
+                    detail: advanceCount > 0 ? "\(advanceCount) öğrenci" : "yok",
+                    icon: "arrow.down.circle",
+                    tint: Theme.blue,
+                    valueTint: Theme.ink)
+                kpi(title: "Bu ay işlenen",
+                    value: Fmt.money(monthEarned),
+                    detail: "\(monthLessonCount) ders",
+                    icon: "checkmark.circle",
+                    tint: Theme.green,
+                    valueTint: Theme.ink)
             }
-            .chartYAxis(.hidden)
-            // Yalnız ay adları; dikey kılavuz çizgileri küçük kartı kalabalıklaştırıyordu.
-            .chartXAxis {
-                AxisMarks { _ in
-                    AxisValueLabel()
-                }
-            }
-            .frame(height: 90)
         }
-        .card(14)
+        .card(16)
     }
 
-    private struct MonthTotal: Identifiable {
-        let month: Date
-        let label: String
-        let total: Double
-        let isCurrent: Bool
-        var id: Date { month }
+    private func kpi(title: String, value: String, detail: String,
+                     icon: String, tint: Color, valueTint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Label(title, systemImage: icon)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(Theme.inkSoft)
+                .labelStyle(TintedIconLabelStyle(tint: tint))
+                .lineLimit(1)
+            Text(value)
+                .font(.subheadline.weight(.bold))
+                .fontDesign(.serif)
+                .foregroundStyle(valueTint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text(detail)
+                .font(.caption2)
+                .foregroundStyle(Theme.inkSoft)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 
-    private var monthlyTotals: [MonthTotal] {
-        let current = Date().startOfMonth
-        return (0..<6).reversed().map { back in
-            let month = current.adding(months: -back)
-            return MonthTotal(month: month,
-                              label: Fmt.monthShort.string(from: month),
-                              total: monthTotal(month),
-                              isCurrent: back == 0)
-        }
+    // MARK: Hesaplar
+
+    private var pendingDetail: String {
+        let count = students.filter { $0.balance > 0.5 }.count
+        return count > 0 ? "\(count) öğrenci" : "herkes ödedi"
+    }
+
+    private var advanceTotal: Double {
+        students.reduce(0) { $0 + max(-$1.balance, 0) }
+    }
+
+    private var advanceCount: Int {
+        students.filter { $0.balance < -0.5 }.count
+    }
+
+    private var monthCompletedLessons: [Lesson] {
+        let start = Date().startOfMonth
+        let end = start.adding(months: 1)
+        return students.flatMap(\.completedLessons).filter { $0.date >= start && $0.date < end }
+    }
+
+    private var monthEarned: Double {
+        monthCompletedLessons.reduce(0) { $0 + $1.fee }
+    }
+
+    private var monthLessonCount: Int {
+        monthCompletedLessons.count
+    }
+
+    /// Ay bitmeden tam geçen ayla kıyaslamak yanıltıcı olurdu; geçen ayın
+    /// aynı gününe kadarki tahsilatla kıyaslanır.
+    private var monthDelta: Double? {
+        let lastStart = Date().startOfMonth.adding(months: -1)
+        let dayOffset = Calendar.tr.dateComponents([.day], from: Date().startOfMonth, to: Date()).day ?? 0
+        let lastToDate = min(lastStart.adding(days: dayOffset + 1), Date().startOfMonth)
+        let previous = payments
+            .filter { $0.date >= lastStart && $0.date < lastToDate }
+            .reduce(0) { $0 + $1.amount }
+        guard previous > 0.5 else { return nil }
+        return (monthCollected - previous) / previous
+    }
+
+    private var lastMonthComparison: String? {
+        let lastStart = Date().startOfMonth.adding(months: -1)
+        let total = monthTotal(lastStart)
+        guard total > 0.5 else { return nil }
+        return "\(Fmt.monthName(lastStart)) toplamı \(Fmt.money(total))"
     }
 
     private func monthTotal(_ month: Date) -> Double {
@@ -617,6 +678,41 @@ extension View {
             Button("Vazgeç", role: .cancel) { target.wrappedValue = nil }
         } message: { payment in
             Text("\(payment.student?.name ?? "Öğrenci") • \(Fmt.money(payment.amount)) • \(Fmt.dayMonthShort.string(from: payment.date))")
+        }
+    }
+}
+
+/// Geçen ayın aynı gününe göre değişim
+private struct DeltaChip: View {
+    let percent: Double
+
+    var body: some View {
+        let up = percent >= 0
+        let value = Int((abs(percent) * 100).rounded())
+        HStack(spacing: 3) {
+            Image(systemName: up ? "arrow.up.right" : "arrow.down.right")
+                .font(.caption2.weight(.bold))
+            Text("%\(value)")
+                .font(.caption.weight(.bold))
+                .monospacedDigit()
+        }
+        .foregroundStyle(up ? Theme.green : Theme.red)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Capsule().fill((up ? Theme.green : Theme.red).opacity(0.12)))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Geçen ayın aynı gününe göre yüzde \(value) \(up ? "fazla" : "az")")
+    }
+}
+
+/// Başlığı gri, simgesi kendi renginde etiket
+private struct TintedIconLabelStyle: LabelStyle {
+    let tint: Color
+
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 4) {
+            configuration.icon.foregroundStyle(tint)
+            configuration.title
         }
     }
 }

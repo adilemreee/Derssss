@@ -115,6 +115,13 @@ enum Fmt {
     static let long = make("d MMMM yyyy")
     static let monthYear = make("MMMM yyyy")
     static let monthShort = make("MMM")
+    private static let monthNameFormatter = make("LLLL")
+
+    /// "Eylül" (büyük harfle)
+    static func monthName(_ date: Date) -> String {
+        monthNameFormatter.string(from: date).capitalized(with: Locale(identifier: "tr_TR"))
+    }
+
     /// Dışa aktarılan dosya adlarında kullanılır
     static let fileStamp = make("yyyyMMdd-HHmm")
 
