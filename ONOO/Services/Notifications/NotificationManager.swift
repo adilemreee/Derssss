@@ -22,9 +22,9 @@ enum AppNotifications {
     }
 
     /// "Ders bitti" bildiriminin kategorisi ve "İşlendi" düğmesi.
-    static let lessonDoneCategory = "LESSON_DONE"
-    static let markDoneAction = "MARK_DONE"
-    static let lessonIDKey = "lessonID"
+    nonisolated static let lessonDoneCategory = "LESSON_DONE"
+    nonisolated static let markDoneAction = "MARK_DONE"
+    nonisolated static let lessonIDKey = "lessonID"
 
     /// Bildirimdeki düğmeler kategoriyle tanımlanır; açılışta bir kez kaydedilir.
     static func registerCategories() {

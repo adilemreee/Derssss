@@ -1,0 +1,201 @@
+{
+  "fill-specializations": [
+    {
+      "value": {
+        "linear-gradient": [
+          "srgb:0.29412,0.55686,0.42745,1.00000",
+          "srgb:0.03922,0.12941,0.09412,1.00000"
+        ],
+        "orientation": {
+          "start": {
+            "x": 0.2,
+            "y": 0
+          },
+          "stop": {
+            "x": 0.8,
+            "y": 1
+          }
+        }
+      }
+    },
+    {
+      "appearance": "dark",
+      "value": {
+        "linear-gradient": [
+          "srgb:0.12549,0.20000,0.16471,1.00000",
+          "srgb:0.02745,0.05098,0.03922,1.00000"
+        ],
+        "orientation": {
+          "start": {
+            "x": 0.2,
+            "y": 0
+          },
+          "stop": {
+            "x": 0.8,
+            "y": 1
+          }
+        }
+      }
+    }
+  ],
+  "groups": [
+    {
+      "layers": [
+        {
+          "glass": true,
+          "image-name": "rozet.svg",
+          "name": "rozet"
+        }
+      ],
+      "name": "Rozet",
+      "shadow": {
+        "kind": "layer-color",
+        "opacity": 0.6
+      },
+      "specular": true,
+      "translucency": {
+        "enabled": true,
+        "value": 0.15
+      }
+    },
+    {
+      "layers": [
+        {
+          "glass": true,
+          "image-name-specializations": [
+            {
+              "value": "spiral.svg"
+            },
+            {
+              "appearance": "dark",
+              "value": "spiral-koyu.svg"
+            }
+          ],
+          "name": "spiral"
+        }
+      ],
+      "name": "Spiral",
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.45
+      },
+      "specular": true,
+      "translucency": {
+        "enabled": false,
+        "value": 0
+      }
+    },
+    {
+      "layers": [
+        {
+          "glass": false,
+          "image-name-specializations": [
+            {
+              "value": "takvim.svg"
+            },
+            {
+              "appearance": "dark",
+              "value": "takvim-koyu.svg"
+            }
+          ],
+          "name": "takvim"
+        },
+        {
+          "glass": false,
+          "image-name-specializations": [
+            {
+              "value": "delikler.svg"
+            },
+            {
+              "appearance": "dark",
+              "value": "delikler-koyu.svg"
+            }
+          ],
+          "name": "delikler"
+        },
+        {
+          "glass": true,
+          "image-name-specializations": [
+            {
+              "value": "sayfa.svg"
+            },
+            {
+              "appearance": "dark",
+              "value": "sayfa-koyu.svg"
+            }
+          ],
+          "name": "sayfa"
+        },
+        {
+          "glass": false,
+          "image-name-specializations": [
+            {
+              "value": "ayrac.svg"
+            },
+            {
+              "appearance": "dark",
+              "value": "ayrac-koyu.svg"
+            }
+          ],
+          "name": "ayrac"
+        },
+        {
+          "glass": false,
+          "image-name-specializations": [
+            {
+              "value": "arka-sayfa.svg"
+            },
+            {
+              "appearance": "dark",
+              "value": "arka-sayfa-koyu.svg"
+            }
+          ],
+          "name": "arka-sayfa"
+        }
+      ],
+      "name": "Defter",
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.55
+      },
+      "specular": true,
+      "translucency": {
+        "enabled": true,
+        "value": 0.08
+      }
+    },
+    {
+      "layers": [
+        {
+          "glass": false,
+          "image-name-specializations": [
+            {
+              "value": "isik.svg"
+            },
+            {
+              "appearance": "dark",
+              "value": "isik-koyu.svg"
+            }
+          ],
+          "name": "isik"
+        }
+      ],
+      "name": "Işık",
+      "shadow": {
+        "kind": "none",
+        "opacity": 0
+      },
+      "specular": false,
+      "translucency": {
+        "enabled": false,
+        "value": 0
+      }
+    }
+  ],
+  "supported-platforms": {
+    "circles": [
+      "watchOS"
+    ],
+    "squares": "shared"
+  }
+}
