@@ -47,15 +47,19 @@ Derslerini, ödemelerini ve ödevlerini tek defterde topla. Kimin borcu var, kim
 • Ders, sınıf, saatlik ücret ve veli iletişim bilgileri
 • Her öğrenci için ders geçmişi, ödeme dökümü ve bakiye
 • Tek dokunuşla ara, SMS gönder veya WhatsApp'tan yaz
+• Tüm kayıtlarını CSV olarak dışa aktar; Excel ve Numbers ile açılır
 
 DERS PROGRAMI
 • Haftalık ve aylık takvim görünümü
 • Dersi "Her hafta" olarak kaydet; sonraki haftalar kendiliğinden planlansın
 • Dersi işlendi ya da iptal olarak işaretle; iptal sebebini kaydet
+• Ana ekran ve kilit ekranı widget'ı: sıradaki ders bir bakışta, biten dersi uygulamayı açmadan işaretle
+• Saati geçip işaretlenmeyen dersler Özet'te seni bekler
 
 ÜCRET VE ÖDEME
 • Saatlik ücret ya da derse özel sabit tutar
 • İşlenen her ders o günkü ücretle kilitlenir; fiyat güncellemen geçmişi bozmaz
+• Toplu ödeme: aylık ya da haftalık anlaşmalarda ödemeyi derslere bağla, hangi dersin ödendiğini gör
 • Nakit, havale ve diğer ödeme yöntemleri
 • Borç ve avans otomatik hesaplanır, ödeme hatırlatma mesajı hazır gelir
 
@@ -271,6 +275,30 @@ TestFlight'ta satın almalar ücretsizdir; ayrı Sandbox hesabı gerekmez.
 
 Video büyükse App Review yanıtına ek olarak yüklenemeyebilir; o zaman iCloud
 Drive / Google Drive paylaşım bağlantısını (herkese açık görüntüleme) yanıta ekle.
+
+---
+
+## Sürüm notları (What's New) — widget ve toplu ödeme güncellemesi
+
+```
+Bu sürümde neler var?
+
+• Ana ekran widget'ı: Günün dersleri ve sıradaki ders ana ekranda ve kilit ekranında. Biten dersi uygulamayı açmadan "İşlendi" olarak işaretle.
+• Toplu ödeme: Aylık ya da iki haftalık anlaşmalı öğrencilerin ödemesini derslere bağla. Dersler ayrı ayrı kalır, her birinde "toplu ödendi" görünür; planlı dersleri peşin de ödeyebilirsin.
+• Haftalık dersler: Ders eklerken "Her hafta"yı seç, sonraki haftalar kendiliğinden planlansın. Gün ya da saat değişince yalnızca o dersi ya da sonrakileri de güncelle. Haftalık ders ücretsiz sürümde de sınırsız.
+• İşaretlenmemiş dersler: Saati geçip işaretlenmeyen dersler Özet'te seni bekler; ders bitince "İşlendi mi?" bildirimi gelir.
+• Öğrenci özetinde ve PDF raporda "Tüm zamanlar" seçeneği.
+• Ödemeler ekranı sadeleşti: bu ayın tahsilatı, bekleyen ve avans tek bakışta. Ödemeler artık düzenlenebilir.
+• CSV dışa aktarma herkese ücretsiz.
+
+Ayrıca: ücret değişince planlı dersler yeni ücrete geçer, arşivlenen öğrencinin dersleri programdan kalkar, eşitleme büyük defterlerde de sorunsuz çalışır.
+```
+
+## Promotional Text — bu güncelleme için
+
+```
+Yeni: ana ekran widget'ı ve toplu ödeme. Aylık anlaşmalı öğrencilerin ödemesini derslere bağla, biten dersi widget'tan tek dokunuşla işaretle.
+```
 
 ---
 

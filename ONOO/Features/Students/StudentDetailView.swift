@@ -198,34 +198,33 @@ struct StudentDetailView: View {
     private var weeklyRow: some View {
         let templates = weeklyTemplates
         if !templates.isEmpty || !student.isArchived {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(templates) { template in
-                        Button {
-                            editingTemplate = template
-                        } label: {
-                            weeklyChip(template)
-                        }
-                        .buttonStyle(.plain)
+            // Sığmayan çipler alt satıra geçer. Yatay kaydırmada çipler
+            // kartın kenarından dışarı taşıyordu.
+            FlowLayout(spacing: 8, lineSpacing: 8) {
+                ForEach(templates) { template in
+                    Button {
+                        editingTemplate = template
+                    } label: {
+                        weeklyChip(template)
                     }
-                    if !student.isArchived {
-                        Button {
-                            showWeeklyForm = true
-                        } label: {
-                            Label(templates.isEmpty ? "Haftalık ders ekle" : "Ekle", systemImage: "plus")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(Theme.accent)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 7)
-                                .overlay(Capsule().strokeBorder(Theme.line, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
-                                .contentShape(Capsule())
-                        }
-                        .buttonStyle(.plain)
-                    }
+                    .buttonStyle(.plain)
                 }
-                .padding(.vertical, 1)
+                if !student.isArchived {
+                    Button {
+                        showWeeklyForm = true
+                    } label: {
+                        Label(templates.isEmpty ? "Haftalık ders ekle" : "Ekle", systemImage: "plus")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Theme.accent)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .overlay(Capsule().strokeBorder(Theme.line, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
             }
-            .scrollClipDisabled()
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
