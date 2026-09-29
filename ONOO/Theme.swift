@@ -440,6 +440,9 @@ struct LessonRow: View {
     /// Satırın yanında "işlendi" tik düğmesi varsa "Planlandı" etiketi
     /// tekrar olur ve konuya yer bırakmaz.
     var hidesPlannedStatus: Bool = false
+    /// Öğrenci sayfasında hesaplanan ödeme durumu. Verilmezse yalnızca
+    /// toplu ödeme bağı gösterilir (her satırda hesap yapmamak için).
+    var payState: LessonPayState? = nil
 
     var body: some View {
         HStack(spacing: 12) {
@@ -475,10 +478,18 @@ struct LessonRow: View {
             Spacer(minLength: 8)
 
             VStack(alignment: .trailing, spacing: 4) {
-                Text(Fmt.money(lesson.fee))
-                    .monospacedDigit()
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(Theme.ink)
+                HStack(spacing: 3) {
+                    if isPaid {
+                        Image(systemName: isBulkPaid ? "square.stack.3d.up.fill" : "checkmark")
+                            .font(.system(size: 9, weight: .bold))
+                    }
+                    Text(Fmt.money(lesson.fee))
+                        .monospacedDigit()
+                }
+                .font(.caption.weight(.bold))
+                .foregroundStyle(isPaid ? Theme.green : Theme.ink)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("\(Fmt.money(lesson.fee))\(isBulkPaid ? ", toplu ödendi" : isPaid ? ", ödendi" : "")")
                 if !(hidesPlannedStatus && lesson.status == .planned) {
                     StatusChip(status: lesson.status)
                 }
@@ -487,6 +498,25 @@ struct LessonRow: View {
         .padding(12)
         .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.card))
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Theme.line, lineWidth: 1))
+    }
+
+    private var resolvedPayState: LessonPayState? {
+        guard lesson.status != .cancelled else { return nil }
+        if let payState { return payState }
+        if let payment = lesson.payment { return .bulk(payment) }
+        return nil
+    }
+
+    private var isBulkPaid: Bool {
+        if case .bulk = resolvedPayState { return true }
+        return false
+    }
+
+    private var isPaid: Bool {
+        switch resolvedPayState {
+        case .bulk, .paid: return true
+        default: return false
+        }
     }
 
     private var title: String {
@@ -505,6 +535,7 @@ struct LessonRow: View {
             if lesson.status == .cancelled && lesson.cancellationReason != .none {
                 parts.append(lesson.cancellationReason.shortTitle)
             }
+            if isBulkPaid { parts.append("Toplu ödendi") }
             return parts.joined(separator: " • ")
         }
         if lesson.status == .cancelled && lesson.cancellationReason != .none {

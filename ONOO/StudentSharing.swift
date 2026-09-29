@@ -110,11 +110,7 @@ enum StudentSharing {
             lines.append("• Toplam ödenen: \(Fmt.money(student.totalPaid))")
         }
         lines.append("• Güncel bakiye: \(balanceText(for: student))")
-        if let remaining = student.packageLessonsRemaining {
-            lines.append(remaining > 0
-                         ? "• Ders paketi: \(remaining) ders kaldı"
-                         : "• Ders paketi bitti")
-        }
+
 
         if !lessons.isEmpty {
             lines.append("")
@@ -124,7 +120,8 @@ enum StudentSharing {
                 let topic = lesson.topic.isEmpty ? (student.subject.isEmpty ? "Konu belirtilmedi" : student.subject) : lesson.topic
                 // Tüm zamanlarda dersler farklı yıllardan olabilir.
                 let day = period == .all ? Fmt.dayMonthYearShort(lesson.date) : Fmt.dayMonthShort.string(from: lesson.date)
-                lines.append("• \(day) \(Fmt.time.string(from: lesson.date)) - \(lesson.status.title) - \(topic)")
+                let paid = lesson.status != .cancelled && lesson.payment != nil ? " (toplu ödendi)" : ""
+                lines.append("• \(day) \(Fmt.time.string(from: lesson.date)) - \(lesson.status.title) - \(topic)\(paid)")
             }
             if shown.hidden > 0 {
                 lines.append(period == .all ? "• ve daha önceki \(shown.hidden) ders" : "• +\(shown.hidden) ders daha")

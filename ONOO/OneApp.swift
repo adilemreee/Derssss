@@ -19,7 +19,7 @@ struct OneApp: App {
 
     init() {
         let schema = Schema([Student.self, Lesson.self, Payment.self,
-                             Homework.self, RecurringLessonTemplate.self, LessonPackage.self])
+                             Homework.self, RecurringLessonTemplate.self])
         do {
             // Veriler cihazda tutulur ve kullanıcının hesabına eşitlenir.
             // CloudKit yerine kendi sunucumuz kullanıldığı için burada

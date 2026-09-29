@@ -65,7 +65,9 @@ struct StudentReportData {
             return Row(
                 leading: "\(period == .all ? Fmt.dayMonthYearShort(lesson.date) : Fmt.dayMonthShort.string(from: lesson.date)) \(Fmt.time.string(from: lesson.date))",
                 title: topic,
-                trailing: lesson.status.title
+                trailing: lesson.status != .cancelled && lesson.payment != nil
+                    ? "\(lesson.status.title) · Ödendi"
+                    : lesson.status.title
             )
         }
 

@@ -106,18 +106,14 @@ enum SampleData {
                                     isDone: done, doneDate: done ? today.adding(days: -6) : nil))
         }
 
-        // Ece peşin ödemeli 8 derslik pakette: son üç haftanın dersleri düşülmüş.
-        if let ece = students.first(where: { $0.name.hasPrefix("Ece") }) {
-            let package = LessonPackage(startDate: today.adding(days: -21), lessonCount: 8,
-                                        price: 5_200, note: "Eylül paketi")
-            context.insert(package)
-            package.student = ece
-            let payment = Payment(date: today.adding(days: -21), amount: 5_200, method: .transfer,
-                                  note: "8 derslik paket")
-            context.insert(payment)
-            payment.student = ece
-            try? context.save()
-            PackageLedger.packageDidChange(package)
+        // Can'ın ödemesi ilk üç dersini kapsayan toplu ödeme: dersler ayrı
+        // ayrı durur, üstlerinde "toplu ödendi" görünür.
+        if let can = students.first(where: { $0.name.hasPrefix("Can") }),
+           let payment = can.allPayments.first {
+            payment.note = "Eylül ilk üç ders"
+            for lesson in can.completedLessons.sorted(by: { $0.date < $1.date }).prefix(3) {
+                lesson.payment = payment
+            }
         }
 
         try? context.save()

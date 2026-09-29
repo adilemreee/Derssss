@@ -39,9 +39,8 @@ nonisolated struct LessonDTO: SyncRecord {
 
     var studentClientId: UUID?
     var templateClientId: UUID?
-    /// Ders paketi bağı. Boşsa JSON'a hiç yazılmaz; paketsiz derslerin özeti
-    /// bu alan eklenmeden önceki hâliyle aynı kalır, hepsi yeniden gönderilmez.
-    var packageClientId: UUID?
+    /// Toplu ödeme bağı
+    var paymentClientId: UUID?
     var date: Date
     var duration: Int
     var status: String
@@ -50,6 +49,37 @@ nonisolated struct LessonDTO: SyncRecord {
     var note: String
     var feeOverride: Double?
     var usesCustomFee: Bool
+
+    /// Diğer alanlar hazır kodlamayla aynı yazılır. `paymentClientId` boşken
+    /// yalnızca sunucuya giderken açıkça `null` yazılır: dersi ödemeden
+    /// çıkarmak sunucudaki bağı da silmeli. Özet çıkarılırken yazılmaz; yoksa
+    /// ödemeye bağlı olmayan her dersin özeti değişir ve hepsi yeniden gider.
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(clientId, forKey: .clientId)
+        try c.encode(clientUpdatedAt, forKey: .clientUpdatedAt)
+        try c.encodeIfPresent(deletedAt, forKey: .deletedAt)
+        try c.encodeIfPresent(studentClientId, forKey: .studentClientId)
+        try c.encodeIfPresent(templateClientId, forKey: .templateClientId)
+        if let paymentClientId {
+            try c.encode(paymentClientId, forKey: .paymentClientId)
+        } else if encoder.userInfo[.explicitNulls] as? Bool == true {
+            try c.encodeNil(forKey: .paymentClientId)
+        }
+        try c.encode(date, forKey: .date)
+        try c.encode(duration, forKey: .duration)
+        try c.encode(status, forKey: .status)
+        try c.encode(cancellationReason, forKey: .cancellationReason)
+        try c.encode(topic, forKey: .topic)
+        try c.encode(note, forKey: .note)
+        try c.encodeIfPresent(feeOverride, forKey: .feeOverride)
+        try c.encode(usesCustomFee, forKey: .usesCustomFee)
+    }
+}
+
+extension CodingUserInfoKey {
+    /// Sunucuya giden istekte boş bağların açıkça `null` yazılması
+    nonisolated static let explicitNulls = CodingUserInfoKey(rawValue: "explicitNulls")!
 }
 
 nonisolated struct PaymentDTO: SyncRecord {
@@ -94,18 +124,6 @@ nonisolated struct TemplateDTO: SyncRecord {
     var generatedUntil: Date?
 }
 
-nonisolated struct PackageDTO: SyncRecord {
-    var clientId: UUID
-    var clientUpdatedAt: Date = .now
-    var deletedAt: Date?
-
-    var studentClientId: UUID?
-    var startDate: Date
-    var lessonCount: Int
-    var price: Double
-    var note: String
-}
-
 /// İtme ve çekme gövdesi aynı biçimi paylaşır.
 nonisolated struct SyncPayload: Codable {
     var students: [StudentDTO] = []
@@ -113,16 +131,14 @@ nonisolated struct SyncPayload: Codable {
     var payments: [PaymentDTO] = []
     var homeworks: [HomeworkDTO] = []
     var templates: [TemplateDTO] = []
-    var packages: [PackageDTO] = []
 
     var isEmpty: Bool {
         students.isEmpty && lessons.isEmpty && payments.isEmpty
-            && homeworks.isEmpty && templates.isEmpty && packages.isEmpty
+            && homeworks.isEmpty && templates.isEmpty
     }
 
     var count: Int {
         students.count + lessons.count + payments.count + homeworks.count + templates.count
-            + packages.count
     }
 }
 
@@ -133,8 +149,9 @@ nonisolated struct PullResponse: Decodable {
     var payments: [PaymentDTO] = []
     var homeworks: [HomeworkDTO] = []
     var templates: [TemplateDTO] = []
-    /// Paketleri bilmeyen eski sunucu bu alanı göndermez.
-    var packages: [PackageDTO]? = nil
+    /// Derslerin ödeme bağını bilen sunucu `true` gönderir. Eski sunucu bu
+    /// alanı hiç göndermez; o zaman cihazdaki bağlar olduğu gibi kalır.
+    var lessonPayments: Bool? = nil
 }
 
 nonisolated struct PushResponse: Decodable {

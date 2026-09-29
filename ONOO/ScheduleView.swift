@@ -702,6 +702,8 @@ struct LessonFormView: View {
     @State private var repeatsWeekly = false
     @State private var showConflictAlert = false
     @State private var showSeriesChoice = false
+    /// "Toplu ödemeden çıkar" denirse kaydederken ders ödemeden ayrılır.
+    @State private var detachFromPayment = false
     @State private var pendingDelete: Lesson?
     @State private var stopRepeatTarget: Lesson?
 
@@ -784,17 +786,6 @@ struct LessonFormView: View {
                         .lineLimit(2...4)
                 }
 
-                if let package = lesson?.package, status == .completed {
-                    // Paketten düşülen dersin ücreti paketten gelir.
-                    Section {
-                        LabeledContent("Ders paketi", value: "\(package.lessonCount) derslik paket")
-                        LabeledContent("Ders başı", value: Fmt.money(package.unitPrice))
-                    } header: {
-                        Text("Ücret")
-                    } footer: {
-                        Text("Bu ders paketten düşüldü; ücreti paket fiyatından gelir.")
-                    }
-                } else {
                 Section("Ücret") {
                     LabeledContent(useCustomFee ? "Standart ücret" : "Kaydedilecek ücret", value: Fmt.money(defaultFee))
                     Toggle("Derse özel ücret", isOn: $useCustomFee)
@@ -811,6 +802,9 @@ struct LessonFormView: View {
                         }
                     }
                 }
+
+                if let payment = lesson?.payment {
+                    bulkPaymentSection(payment)
                 }
 
                 repeatSection
@@ -886,6 +880,27 @@ struct LessonFormView: View {
             } else if repeatsWeekly {
                 Text("Her \(RecurringLessonTemplate.weekdayName(Calendar.tr.component(.weekday, from: startDate))) \(Fmt.time.string(from: startDate)) otomatik planlanır. Tatil haftasında o dersi silmen yeterli; sonraki haftalar devam eder.")
             }
+        }
+    }
+
+    /// Toplu ödemeyle ödenmiş dersin ödeme bilgisi
+    private func bulkPaymentSection(_ payment: Payment) -> some View {
+        Section {
+            LabeledContent("Toplu ödeme") {
+                Text("\(Fmt.dayMonthShort.string(from: payment.date)) · \(payment.bulkSummary)")
+            }
+            LabeledContent("Ödeme tutarı", value: Fmt.money(payment.amount))
+            if detachFromPayment {
+                Button("Vazgeç, ödemede kalsın") { detachFromPayment = false }
+            } else {
+                Button("Toplu ödemeden çıkar", role: .destructive) { detachFromPayment = true }
+            }
+        } header: {
+            Text("Ödeme")
+        } footer: {
+            Text(detachFromPayment
+                 ? "Kaydedince bu ders ödemeden çıkar; ödeme tutarı değişmez, fark avans olarak kalır."
+                 : "Bu ders \(Fmt.dayMonthShort.string(from: payment.date)) tarihli toplu ödemeyle ödendi. Ücretini değiştirirsen ödeme tutarı değişmez; fark bakiyeye yansır.")
         }
     }
 
@@ -999,12 +1014,10 @@ struct LessonFormView: View {
             lesson.cancellationReason = status == .cancelled ? cancellationReason : .none
             lesson.topic = topic
             lesson.note = note
-            if lesson.package == nil || status != .completed {
-                lesson.feeOverride = fee
-                lesson.usesCustomFee = useCustomFee
-            }
-            // Öğrenci ya da durum değiştiyse paket bağı yeniden kurulur.
-            PackageLedger.reconcile(lesson)
+            lesson.feeOverride = fee
+            lesson.usesCustomFee = useCustomFee
+            // Başka öğrenciye taşınan ders o öğrencinin ödemesiyle ödenmiş sayılmaz.
+            if detachFromPayment || studentChanged { lesson.payment = nil }
             try? context.save()
             if repeatsWeekly && lesson.sourceTemplate == nil {
                 RecurringLessons.startSeries(from: lesson, in: context)
@@ -1020,8 +1033,6 @@ struct LessonFormView: View {
                              usesCustomFee: useCustomFee)
             context.insert(new)
             new.student = student
-            // İşlendi olarak eklenen geçmiş ders de paketten düşer.
-            PackageLedger.reconcile(new)
             try? context.save()
             if repeatsWeekly {
                 RecurringLessons.startSeries(from: new, in: context)

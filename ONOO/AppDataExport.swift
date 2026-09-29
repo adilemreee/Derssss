@@ -56,7 +56,7 @@ enum AppDataExport {
 
     private static func lessonsCSV(_ lessons: [Lesson]) -> String {
         rows([
-            ["Tarih", "Saat", "Öğrenci", "Ders", "Süre", "Durum", "İptal Sebebi", "Konu", "Not", "Ders Tutarı"]
+            ["Tarih", "Saat", "Öğrenci", "Ders", "Süre", "Durum", "İptal Sebebi", "Konu", "Not", "Ders Tutarı", "Toplu Ödeme"]
         ] + lessons.sorted { $0.date < $1.date }.map { lesson in
             [
                 Fmt.long.string(from: lesson.date),
@@ -68,21 +68,23 @@ enum AppDataExport {
                 lesson.cancellationReason == .none ? "" : lesson.cancellationReason.title,
                 lesson.topic,
                 lesson.note,
-                moneyValue(lesson.fee)
+                moneyValue(lesson.fee),
+                lesson.payment.map { Fmt.long.string(from: $0.date) } ?? ""
             ]
         })
     }
 
     private static func paymentsCSV(_ payments: [Payment]) -> String {
         rows([
-            ["Tarih", "Öğrenci", "Tutar", "Yöntem", "Not"]
+            ["Tarih", "Öğrenci", "Tutar", "Yöntem", "Not", "Kapsadığı Dersler"]
         ] + payments.sorted { $0.date < $1.date }.map { payment in
             [
                 Fmt.long.string(from: payment.date),
                 payment.student?.name ?? "",
                 moneyValue(payment.amount),
                 payment.method.title,
-                payment.note
+                payment.note,
+                payment.coveredLessons.map { Fmt.dayMonthShort.string(from: $0.date) }.joined(separator: ", ")
             ]
         })
     }

@@ -41,8 +41,7 @@ struct StudentDetailView: View {
     @State private var showPaywall = false
     @State private var editingPayment: Payment?
     @State private var pendingPaymentDelete: Payment?
-    @State private var editingPackage: LessonPackage?
-    @State private var showPackageForm = false
+    @State private var showBulkPayment = false
 
     var body: some View {
         ScrollView {
@@ -51,13 +50,6 @@ struct StudentDetailView: View {
                 // eskiden beş bloğun altında, ekranın ancak sonunda başlıyordu.
                 header
                 balanceBanner
-                if let package = student.currentPackage {
-                    PackageCard(student: student, package: package) {
-                        editingPackage = package
-                    } onNew: {
-                        showPackageForm = true
-                    }
-                }
                 Picker("Bölüm", selection: $tab) {
                     ForEach(DetailTab.allCases, id: \.self) { t in
                         Text(t.rawValue).tag(t)
@@ -84,7 +76,7 @@ struct StudentDetailView: View {
                 Menu {
                     Button { showLessonForm = true } label: { Label("Ders Ekle", systemImage: "calendar.badge.plus") }
                     Button { showPaymentForm = true } label: { Label("Ödeme Al", systemImage: "turkishlirasign.circle") }
-                    Button { showPackageForm = true } label: { Label("Ders Paketi Ekle", systemImage: "shippingbox") }
+                    Button { showBulkPayment = true } label: { Label("Toplu Ödeme Al", systemImage: "square.stack.3d.up") }
                     Button { showHomeworkForm = true } label: { Label("Ödev Ver", systemImage: "book") }
                     Divider()
                     Button {
@@ -128,11 +120,8 @@ struct StudentDetailView: View {
         .sheet(item: $editingPayment) { payment in
             PaymentFormView(payment: payment)
         }
-        .sheet(item: $editingPackage) { package in
-            PackageFormView(student: student, package: package)
-        }
-        .sheet(isPresented: $showPackageForm) {
-            PackageFormView(student: student)
+        .sheet(isPresented: $showBulkPayment) {
+            PaymentFormView(student: student, startWithLessons: true)
         }
         .sheet(isPresented: $showPaywall) { PaywallView() }
         .studentArchiveDialog($archiveTarget, context: context, onArchived: { dismiss() })
@@ -402,13 +391,16 @@ struct StudentDetailView: View {
     // MARK: - Dersler sekmesi
 
     private var lessonsTab: some View {
-        VStack(spacing: 10) {
+        // Hangi dersin ödendiği bir kez hesaplanır; tutarların yanında görünür.
+        let ledger = PaymentLedger(student: student)
+        return VStack(spacing: 10) {
             if sortedLessons.isEmpty {
                 EmptyStateView(icon: "calendar", title: "Ders kaydı yok",
                                actionTitle: "Ders Ekle", action: { showLessonForm = true })
             } else {
                 ForEach(sortedLessons) { lesson in
-                    LessonRow(lesson: lesson, showDate: true, showStudent: false)
+                    LessonRow(lesson: lesson, showDate: true, showStudent: false,
+                              payState: ledger.state(of: lesson))
                         .onTapGesture { editingLesson = lesson }
                         .contextMenu {
                             ForEach(LessonStatus.allCases, id: \.self) { status in
@@ -479,14 +471,6 @@ struct StudentDetailView: View {
 
     private var paymentsTab: some View {
         VStack(spacing: 10) {
-            if !student.allPackages.isEmpty {
-                ForEach(student.allPackages.reversed()) { package in
-                    PackageRow(package: package)
-                        .contentShape(Rectangle())
-                        .onTapGesture { editingPackage = package }
-                }
-                Divider().padding(.vertical, 4)
-            }
             if sortedPayments.isEmpty {
                 EmptyStateView(icon: "turkishlirasign.circle", title: "Ödeme kaydı yok",
                                actionTitle: "Ödeme Al", action: { showPaymentForm = true })
@@ -898,7 +882,7 @@ struct PaymentRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: payment.method.icon)
+            Image(systemName: payment.isBulk ? "square.stack.3d.up.fill" : payment.method.icon)
                 .font(.subheadline)
                 .foregroundStyle(Theme.green)
                 .frame(width: 36, height: 36)
@@ -923,6 +907,7 @@ struct PaymentRow: View {
 
     private var subtitle: String {
         var parts = [Fmt.dayMonthShort.string(from: payment.date)]
+        if payment.isBulk { parts.append("\(payment.bulkSummary) toplu") }
         if showStudent { parts.append(payment.method.title) }
         if !payment.note.isEmpty { parts.append(payment.note) }
         return parts.joined(separator: " • ")

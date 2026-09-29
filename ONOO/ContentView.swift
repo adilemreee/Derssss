@@ -103,7 +103,7 @@ enum LessonFeeMigration {
 
 #Preview {
     ContentView()
-        .modelContainer(for: [Student.self, Lesson.self, Payment.self, Homework.self, RecurringLessonTemplate.self, LessonPackage.self], inMemory: true)
+        .modelContainer(for: [Student.self, Lesson.self, Payment.self, Homework.self, RecurringLessonTemplate.self], inMemory: true)
         .environment(ProStore())
         .environment(AuthManager())
 }

@@ -183,6 +183,7 @@ actor APIClient {
     static let encoder: JSONEncoder = {
         let e = JSONEncoder()
         e.dateEncodingStrategy = .iso8601
+        e.userInfo[.explicitNulls] = true
         return e
     }()
 

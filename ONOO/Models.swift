@@ -128,8 +128,6 @@ final class Student {
     var homeworks: [Homework]? = []
     @Relationship(deleteRule: .cascade, inverse: \RecurringLessonTemplate.student)
     var recurringTemplates: [RecurringLessonTemplate]? = []
-    @Relationship(deleteRule: .cascade, inverse: \LessonPackage.student)
-    var packages: [LessonPackage]? = []
 
     init(name: String,
          subject: String = "",
@@ -169,13 +167,6 @@ final class Student {
     var allPayments: [Payment] { payments ?? [] }
     var allHomeworks: [Homework] { homeworks ?? [] }
     var allRecurringTemplates: [RecurringLessonTemplate] { recurringTemplates ?? [] }
-    var allPackages: [LessonPackage] { (packages ?? []).sorted { $0.startDate < $1.startDate } }
-
-    /// Paketlerde kalan toplam ders; paketi yoksa nil.
-    var packageLessonsRemaining: Int? {
-        let all = allPackages
-        return all.isEmpty ? nil : all.reduce(0) { $0 + $1.remaining }
-    }
 
     var completedLessons: [Lesson] {
         allLessons.filter { $0.status == .completed }
@@ -220,8 +211,9 @@ final class Lesson {
     var student: Student? = nil
     /// Ders bir tekrar şablonundan üretildiyse kaynağı
     var sourceTemplate: RecurringLessonTemplate? = nil
-    /// İşlenen ders bir ders paketinden düşüldüyse o paket
-    var package: LessonPackage? = nil
+    /// Ders toplu ödemeyle ödendiyse o ödeme. Dersin ücreti değişmez; bağ
+    /// yalnızca "bu ders şu ödemeyle ödendi" bilgisini taşır.
+    var payment: Payment? = nil
 
     init(student: Student? = nil,
          date: Date,
@@ -250,10 +242,6 @@ final class Lesson {
             if newValue != .cancelled {
                 cancellationReasonRaw = CancellationReason.none.rawValue
             }
-            // İşlendi denen ders paketten düşer, işlendi olmaktan çıkan geri
-            // döner. Eşitleme `statusRaw`'a doğrudan yazar; paket bağı oradan
-            // `packageClientId` ile gelir.
-            PackageLedger.reconcile(self)
         }
     }
 
@@ -293,6 +281,10 @@ final class Payment {
     var note: String = ""
     var student: Student? = nil
 
+    /// Toplu ödemenin kapsadığı dersler. Boşsa sıradan (tutar girilmiş) ödeme.
+    @Relationship(deleteRule: .nullify, inverse: \Lesson.payment)
+    var lessons: [Lesson]? = []
+
     init(student: Student? = nil,
          date: Date = Date(),
          amount: Double,
@@ -309,6 +301,13 @@ final class Payment {
         get { PaymentMethod(rawValue: methodRaw) ?? .other }
         set { methodRaw = newValue.rawValue }
     }
+
+    /// Toplu ödemenin dersleri, tarihe göre.
+    var coveredLessons: [Lesson] {
+        (lessons ?? []).sorted { $0.date < $1.date }
+    }
+
+    var isBulk: Bool { !(lessons ?? []).isEmpty }
 }
 
 // MARK: - Ödev
@@ -404,51 +403,5 @@ final class RecurringLessonTemplate {
 
     var timeText: String {
         String(format: "%02d:%02d", hour, minute)
-    }
-}
-
-// MARK: - Ders paketi
-
-/// Peşin satılan ders paketi: "10 ders, 8.000 ₺". İşlenen dersler paketten
-/// düşer ve paket fiyatının ders başı payıyla ücretlenir; böylece paket
-/// bitince bakiye kendiliğinden kapanır.
-@Model
-final class LessonPackage {
-    var uuid: UUID = UUID()
-    /// Bu tarihten itibaren işlenen dersler pakete sayılır
-    var startDate: Date = Date()
-    var lessonCount: Int = 10
-    /// Paketin toplam ücreti
-    var price: Double = 0
-    var note: String = ""
-    var createdAt: Date = Date()
-    var student: Student? = nil
-
-    @Relationship(deleteRule: .nullify, inverse: \Lesson.package)
-    var lessons: [Lesson]? = []
-
-    init(student: Student? = nil,
-         startDate: Date = Date(),
-         lessonCount: Int = 10,
-         price: Double = 0,
-         note: String = "") {
-        self.student = student
-        self.startDate = startDate
-        self.lessonCount = lessonCount
-        self.price = price
-        self.note = note
-    }
-
-    var usedLessons: [Lesson] {
-        (lessons ?? []).filter { $0.status == .completed }.sorted { $0.date < $1.date }
-    }
-
-    var used: Int { usedLessons.count }
-    var remaining: Int { max(lessonCount - used, 0) }
-    var isFinished: Bool { remaining == 0 }
-
-    /// Ders başına düşen ücret
-    var unitPrice: Double {
-        lessonCount > 0 ? price / Double(lessonCount) : 0
     }
 }

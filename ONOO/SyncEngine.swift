@@ -131,10 +131,14 @@ final class SyncEngine {
         collect(snapshot.payments, into: &payload.payments)
         collect(snapshot.homeworks, into: &payload.homeworks)
         collect(snapshot.templates, into: &payload.templates)
-        collect(snapshot.packages, into: &payload.packages)
 
         // Defterde olup artık cihazda olmayan her kayıt silinmiş demektir.
-        let deleted = Set(state.hashes.keys).subtracting(seen)
+        var deleted = Set(state.hashes.keys).subtracting(seen)
+        // Kaldırılan ders paketlerinin eski kayıtları yalnızca unutulur.
+        for key in deleted where state.kinds[key] == .package {
+            state.forget(key)
+            deleted.remove(key)
+        }
         for key in deleted {
             guard let uuid = UUID(uuidString: key), let kind = state.kinds[key] else { continue }
             appendTombstone(kind: kind, uuid: uuid, at: now, to: &payload)
@@ -162,9 +166,6 @@ final class SyncEngine {
         }
         for record in payload.templates where record.deletedAt == nil {
             state.remember(record, kind: .template)
-        }
-        for record in payload.packages where record.deletedAt == nil {
-            state.remember(record, kind: .package)
         }
         for key in deleted {
             state.forget(key)
@@ -197,9 +198,7 @@ final class SyncEngine {
                 weekday: 3, hour: 17, minute: 0, duration: 60,
                 usesCustomFee: false, isPaused: false))
         case .package:
-            payload.packages.append(PackageDTO(
-                clientId: uuid, clientUpdatedAt: now, deletedAt: now,
-                startDate: now, lessonCount: 0, price: 0, note: ""))
+            break
         }
     }
 
@@ -217,11 +216,11 @@ final class SyncEngine {
         applyStudents(response.students, context: context)
         let students = Self.map(context.fetchAll(Student.self), by: \.uuid)
         let templates = applyTemplates(response.templates, students: students, context: context)
-        let packages = applyPackages(response.packages ?? [], students: students, context: context)
+        // Ödemeler derslerden önce: dersler toplu ödemelerine bağlanır.
+        let payments = applyPayments(response.payments, students: students, context: context)
         applyLessons(response.lessons, students: students, templates: templates,
-                     packages: packages, serverKnowsPackages: response.packages != nil,
+                     payments: payments, serverKnowsPayments: response.lessonPayments == true,
                      context: context)
-        applyPayments(response.payments, students: students, context: context)
         applyHomeworks(response.homeworks, students: students, context: context)
 
         try? context.save()
@@ -235,7 +234,6 @@ final class SyncEngine {
         for record in snapshot.payments { state.remember(record, kind: .payment) }
         for record in snapshot.homeworks { state.remember(record, kind: .homework) }
         for record in snapshot.templates { state.remember(record, kind: .template) }
-        for record in snapshot.packages { state.remember(record, kind: .package) }
     }
 
     private func applyStudents(_ records: [StudentDTO], context: ModelContext) {
@@ -299,38 +297,11 @@ final class SyncEngine {
         return existing
     }
 
-    private func applyPackages(_ records: [PackageDTO],
-                               students: [UUID: Student],
-                               context: ModelContext) -> [UUID: LessonPackage] {
-        var existing = Self.map(context.fetchAll(LessonPackage.self), by: \.uuid)
-        for dto in records {
-            if dto.deletedAt != nil {
-                if let model = existing[dto.clientId] { context.delete(model) }
-                state.forget(dto.clientId.uuidString)
-                existing[dto.clientId] = nil
-                continue
-            }
-            let model = existing[dto.clientId] ?? {
-                let new = LessonPackage()
-                new.uuid = dto.clientId
-                context.insert(new)
-                existing[dto.clientId] = new
-                return new
-            }()
-            model.startDate = dto.startDate
-            model.lessonCount = dto.lessonCount
-            model.price = dto.price
-            model.note = dto.note
-            model.student = dto.studentClientId.flatMap { students[$0] }
-        }
-        return existing
-    }
-
     private func applyLessons(_ records: [LessonDTO],
                               students: [UUID: Student],
                               templates: [UUID: RecurringLessonTemplate],
-                              packages: [UUID: LessonPackage],
-                              serverKnowsPackages: Bool,
+                              payments: [UUID: Payment],
+                              serverKnowsPayments: Bool,
                               context: ModelContext) {
         var existing = Self.map(context.fetchAll(Lesson.self), by: \.uuid)
         for dto in records {
@@ -357,17 +328,18 @@ final class SyncEngine {
             model.usesCustomFee = dto.usesCustomFee
             model.student = dto.studentClientId.flatMap { students[$0] }
             model.sourceTemplate = dto.templateClientId.flatMap { templates[$0] }
-            // Paketleri bilmeyen (henüz güncellenmemiş) sunucu bu alanı hiç
-            // göndermez; o zaman cihazdaki paket bağı silinmemeli.
-            if serverKnowsPackages {
-                model.package = dto.packageClientId.flatMap { packages[$0] }
+            // Ödeme bağını bilmeyen (güncellenmemiş) sunucu bu alanı hiç
+            // göndermez; o zaman cihazdaki bağ silinmemeli.
+            if serverKnowsPayments {
+                model.payment = dto.paymentClientId.flatMap { payments[$0] }
             }
         }
     }
 
+    @discardableResult
     private func applyPayments(_ records: [PaymentDTO],
                                students: [UUID: Student],
-                               context: ModelContext) {
+                               context: ModelContext) -> [UUID: Payment] {
         var existing = Self.map(context.fetchAll(Payment.self), by: \.uuid)
         for dto in records {
             if dto.deletedAt != nil {
@@ -389,6 +361,7 @@ final class SyncEngine {
             model.note = dto.note
             model.student = dto.studentClientId.flatMap { students[$0] }
         }
+        return existing
     }
 
     private func applyHomeworks(_ records: [HomeworkDTO],
@@ -442,6 +415,7 @@ final class SyncEngine {
 // MARK: - Yerel eşitleme defteri
 
 nonisolated enum RecordKind: String, Codable {
+    /// `package`: kaldırılan ders paketleri; eski eşitleme defterleri okunabilsin diye durur.
     case student, lesson, payment, homework, template, package
 }
 
@@ -491,7 +465,6 @@ private struct Snapshot {
     let payments: [PaymentDTO]
     let homeworks: [HomeworkDTO]
     let templates: [TemplateDTO]
-    let packages: [PackageDTO]
 
     init(context: ModelContext) {
         students = context.fetchAll(Student.self).map { s in
@@ -504,7 +477,7 @@ private struct Snapshot {
         lessons = context.fetchAll(Lesson.self).map { l in
             LessonDTO(clientId: l.uuid, deletedAt: nil,
                       studentClientId: l.student?.uuid, templateClientId: l.sourceTemplate?.uuid,
-                      packageClientId: l.package?.uuid,
+                      paymentClientId: l.payment?.uuid,
                       date: l.date, duration: l.duration, status: l.statusRaw,
                       cancellationReason: l.cancellationReasonRaw, topic: l.topic, note: l.note,
                       feeOverride: l.feeOverride, usesCustomFee: l.usesCustomFee)
@@ -526,11 +499,6 @@ private struct Snapshot {
                         minute: t.minute, duration: t.duration, feeOverride: t.feeOverride,
                         usesCustomFee: t.usesCustomFee, isPaused: t.isPaused,
                         generatedUntil: t.generatedUntil)
-        }
-        packages = context.fetchAll(LessonPackage.self).map { p in
-            PackageDTO(clientId: p.uuid, deletedAt: nil,
-                       studentClientId: p.student?.uuid, startDate: p.startDate,
-                       lessonCount: p.lessonCount, price: p.price, note: p.note)
         }
     }
 }

@@ -315,8 +315,12 @@ struct PaymentFormView: View {
     @State private var method: PaymentMethod
     @State private var note: String
     @State private var confirmDelete = false
+    /// Toplu ödemenin kapsadığı dersler
+    @State private var lessonIDs: Set<PersistentIdentifier>
+    @State private var showLessonPicker: Bool
 
-    init(student: Student? = nil, payment: Payment? = nil) {
+    /// - Parameter startWithLessons: Öğrenci sayfasındaki "Toplu Ödeme Al" ders seçimiyle açılır.
+    init(student: Student? = nil, payment: Payment? = nil, startWithLessons: Bool = false) {
         self.student = student
         self.payment = payment
         _studentID = State(initialValue: (payment?.student ?? student)?.persistentModelID)
@@ -324,6 +328,10 @@ struct PaymentFormView: View {
         _date = State(initialValue: payment?.date ?? Date())
         _method = State(initialValue: payment?.method ?? .transfer)
         _note = State(initialValue: payment?.note ?? "")
+        _lessonIDs = State(initialValue: Set((payment?.coveredLessons ?? [])
+            .filter { $0.status != .cancelled }
+            .map(\.persistentModelID)))
+        _showLessonPicker = State(initialValue: startWithLessons && payment == nil && student != nil)
     }
 
     private var selectedStudent: Student? {
@@ -335,6 +343,16 @@ struct PaymentFormView: View {
         students.filter { !$0.isArchived || $0.persistentModelID == studentID }
     }
 
+    private var selectedLessons: [Lesson] {
+        (selectedStudent?.allLessons ?? [])
+            .filter { lessonIDs.contains($0.persistentModelID) }
+            .sorted { $0.date < $1.date }
+    }
+
+    private var lessonsTotal: Double {
+        selectedLessons.reduce(0.0) { $0 + $1.fee }
+    }
+
     /// Düzenlenen ödeme bakiyede zaten sayılı; "bakiyenin tamamı" onu hariç tutar.
     private func balanceExcludingThisPayment(_ student: Student) -> Double {
         guard let payment, payment.student?.persistentModelID == student.persistentModelID else {
@@ -343,10 +361,15 @@ struct PaymentFormView: View {
         return student.balance + payment.amount
     }
 
+    private var title: String {
+        if payment != nil { return lessonIDs.isEmpty ? "Ödemeyi Düzenle" : "Toplu Ödeme" }
+        return lessonIDs.isEmpty ? "Ödeme Al" : "Toplu Ödeme Al"
+    }
+
     var body: some View {
         NavigationStack {
             Form {
-                Section("Ödeme") {
+                Section("Öğrenci") {
                     Picker("Öğrenci", selection: $studentID) {
                         Text("Seçiniz").tag(nil as PersistentIdentifier?)
                         ForEach(pickerStudents) { s in
@@ -361,7 +384,13 @@ struct PaymentFormView: View {
                                 .fontWeight(.semibold)
                         }
                     }
+                }
 
+                if selectedStudent != nil {
+                    lessonsSection
+                }
+
+                Section {
                     HStack {
                         Text("Tutar")
                         Spacer()
@@ -373,7 +402,7 @@ struct PaymentFormView: View {
                             .foregroundStyle(Theme.inkSoft)
                     }
 
-                    if let s = selectedStudent, balanceExcludingThisPayment(s) > 0.5 {
+                    if lessonIDs.isEmpty, let s = selectedStudent, balanceExcludingThisPayment(s) > 0.5 {
                         Button("Bakiyenin tamamı: \(Fmt.money(balanceExcludingThisPayment(s)))") {
                             amount = balanceExcludingThisPayment(s)
                         }
@@ -389,10 +418,16 @@ struct PaymentFormView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                } header: {
+                    Text("Ödeme")
+                } footer: {
+                    if let text = differenceText {
+                        Text(text)
+                    }
                 }
 
                 Section("Not") {
-                    TextField("Not (ör. Temmuz dersleri)", text: $note)
+                    TextField("Not (ör. Ekim dersleri)", text: $note)
                 }
 
                 if payment != nil {
@@ -403,7 +438,19 @@ struct PaymentFormView: View {
             }
             .scrollContentBackground(.hidden)
             .background(Theme.paper)
-            .navigationTitle(payment == nil ? "Ödeme Al" : "Ödemeyi Düzenle")
+            .navigationTitle(title)
+            .navigationDestination(isPresented: $showLessonPicker) {
+                if let s = selectedStudent {
+                    LessonSelectionView(student: s, excluding: payment, selection: $lessonIDs)
+                }
+            }
+            .onChange(of: lessonIDs) {
+                // Tutar seçilen derslerin toplamıdır; sonra elle değiştirilebilir.
+                if !lessonIDs.isEmpty { amount = (lessonsTotal * 100).rounded() / 100 }
+            }
+            .onChange(of: studentID) {
+                lessonIDs = []
+            }
             .confirmationDialog("Ödeme silinsin mi?", isPresented: $confirmDelete, titleVisibility: .visible) {
                 Button("Ödemeyi Sil", role: .destructive) {
                     if let payment {
@@ -414,7 +461,9 @@ struct PaymentFormView: View {
                 }
                 Button("Vazgeç", role: .cancel) {}
             } message: {
-                Text("\(Fmt.money(amount)) tutarındaki ödeme silinir ve öğrencinin bakiyesi buna göre değişir.")
+                Text(lessonIDs.isEmpty
+                     ? "\(Fmt.money(amount)) tutarındaki ödeme silinir ve öğrencinin bakiyesi buna göre değişir."
+                     : "\(Fmt.money(amount)) tutarındaki toplu ödeme silinir; kapsadığı \(lessonIDs.count) ders yeniden ödenmemiş görünür.")
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -429,18 +478,100 @@ struct PaymentFormView: View {
         }
     }
 
+    // MARK: Toplu ödeme
+
+    private var lessonsSection: some View {
+        Section {
+            Button {
+                showLessonPicker = true
+            } label: {
+                HStack {
+                    Label(lessonIDs.isEmpty ? "Derslerden seç" : "\(lessonIDs.count) ders seçildi",
+                          systemImage: "square.stack.3d.up")
+                        .foregroundStyle(Theme.accent)
+                    Spacer()
+                    if !lessonIDs.isEmpty {
+                        Text(Fmt.money(lessonsTotal))
+                            .monospacedDigit()
+                            .foregroundStyle(Theme.inkSoft)
+                    }
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Theme.inkSoft.opacity(0.6))
+                }
+            }
+
+            ForEach(selectedLessons.prefix(6)) { lesson in
+                HStack {
+                    Text("\(Fmt.dayMonthShort.string(from: lesson.date)) \(Fmt.weekdayShort.string(from: lesson.date))")
+                        .foregroundStyle(Theme.ink)
+                    Text(lesson.status == .planned ? "Planlı" : "İşlendi")
+                        .font(.caption)
+                        .foregroundStyle(lesson.status == .planned ? Theme.blue : Theme.inkSoft)
+                    Spacer()
+                    Text(Fmt.money(lesson.fee))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.inkSoft)
+                }
+                .font(.subheadline)
+            }
+            if selectedLessons.count > 6 {
+                Text("+\(selectedLessons.count - 6) ders daha")
+                    .font(.caption)
+                    .foregroundStyle(Theme.inkSoft)
+            }
+        } header: {
+            Text("Toplu ödeme")
+        } footer: {
+            Text(lessonsFooter)
+        }
+    }
+
+    private var lessonsFooter: String {
+        var text = lessonIDs.isEmpty
+            ? "İsteğe bağlı. Ödemenin kapsadığı dersleri seçersen tutar onların toplamı olur; dersler ayrı ayrı kalır ve \"toplu ödendi\" olarak görünür."
+            : "Dersler ayrı ayrı kalır; her birinde bu ödemeyle ödendiği yazar."
+        if let payment {
+            let cancelled = payment.coveredLessons.filter { $0.status == .cancelled }
+            if !cancelled.isEmpty {
+                text += " Bu ödemenin \(cancelled.count) dersi iptal edildi; tutarı avans olarak duruyor. Kaydedersen iptal dersler ödemeden çıkar."
+            }
+        }
+        return text
+    }
+
+    /// Tutar elle değiştirildiyse farkın ne olacağı
+    private var differenceText: String? {
+        guard !lessonIDs.isEmpty else { return nil }
+        let diff = amount - lessonsTotal
+        guard abs(diff) > 0.5 else { return nil }
+        return diff > 0
+            ? "Tutar derslerin toplamından \(Fmt.money(diff)) fazla; fark avans olarak kalır."
+            : "Tutar derslerin toplamından \(Fmt.money(-diff)) eksik; fark borç olarak kalır."
+    }
+
     private func save() {
         guard let student = selectedStudent else { return }
+        let target: Payment
         if let payment {
             payment.student = student
             payment.amount = amount
             payment.date = date
             payment.method = method
             payment.note = note
+            target = payment
         } else {
             let new = Payment(date: date, amount: amount, method: method, note: note)
             context.insert(new)
             new.student = student
+            target = new
+        }
+        // Seçimden çıkarılan (ve iptal edilmiş) dersler ödemeden ayrılır.
+        for lesson in target.coveredLessons where !lessonIDs.contains(lesson.persistentModelID) {
+            lesson.payment = nil
+        }
+        for lesson in selectedLessons {
+            lesson.payment = target
         }
         try? context.save()
         dismiss()
