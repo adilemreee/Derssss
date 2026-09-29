@@ -140,6 +140,44 @@ nonisolated struct SyncPayload: Codable {
     var count: Int {
         students.count + lessons.count + payments.count + homeworks.count + templates.count
     }
+
+    /// İtmede bir istekte gidecek en fazla kayıt. Sunucu tür başına 500
+    /// kabul eder; tek istekte toplam 200 bununla birlikte gövdeyi de küçük
+    /// tutar (yavaş bağlantıda zaman aşımına düşmesin).
+    static let chunkSize = 200
+
+    /// Değişiklikleri sunucunun kabul edeceği büyüklükte parçalara böler.
+    ///
+    /// Uzun süredir kullanılan bir defter ilk kez (ya da çıkış yapıp yeniden
+    /// girince) eşitlenirken yüzlerce ders birden gider; tek istek sunucu
+    /// sınırını aşıp reddedilince eşitleme hiç ilerlemiyordu.
+    ///
+    /// Sıra: öğrenciler, haftalık dersler, ödemeler, dersler, ödevler. Dersler
+    /// öğrencilerine, haftalık derslerine ve toplu ödemelerine bağlanır; başka
+    /// bir cihaz arada çekerse dersin bağlandığı kayıt orada zaten bulunur.
+    func chunked(maxRecords: Int = SyncPayload.chunkSize) -> [SyncPayload] {
+        precondition(maxRecords > 0)
+        var chunks: [SyncPayload] = []
+        var current = SyncPayload()
+
+        func add<T>(_ items: [T], to keyPath: WritableKeyPath<SyncPayload, [T]>) {
+            for item in items {
+                if current.count >= maxRecords {
+                    chunks.append(current)
+                    current = SyncPayload()
+                }
+                current[keyPath: keyPath].append(item)
+            }
+        }
+
+        add(students, to: \.students)
+        add(templates, to: \.templates)
+        add(payments, to: \.payments)
+        add(lessons, to: \.lessons)
+        add(homeworks, to: \.homeworks)
+        if !current.isEmpty { chunks.append(current) }
+        return chunks
+    }
 }
 
 nonisolated struct PullResponse: Decodable {

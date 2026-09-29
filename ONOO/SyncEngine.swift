@@ -108,6 +108,11 @@ final class SyncEngine {
 
     // MARK: - İtme
 
+    /// Değişen ve silinen kayıtları parça parça gönderir.
+    ///
+    /// Her parça sunucu kabul edince deftere işlenir ve defter diske yazılır.
+    /// Bağlantı ortada koparsa ya da uygulama kapanırsa bir sonraki
+    /// eşitlemede yalnız gönderilmemiş kalanlar gider.
     private func push(context: ModelContext) async throws {
         let snapshot = Snapshot(context: context)
         var payload = SyncPayload()
@@ -146,30 +151,34 @@ final class SyncEngine {
 
         guard !payload.isEmpty else { return }
 
-        let _: PushResponse = try await APIClient.shared.request(
-            "/v1/sync", method: "POST", body: payload
-        )
+        for chunk in payload.chunked() {
+            let _: PushResponse = try await APIClient.shared.request(
+                "/v1/sync", method: "POST", body: chunk
+            )
+            // Yalnız sunucu kabul ettikten sonra defter güncellenir; istek
+            // başarısız olursa bu parça ve sonrakiler bir dahaki sefere gider.
+            record(chunk)
+            state.save()
+        }
+    }
 
-        // Yalnız sunucu kabul ettikten sonra defter güncellenir; istek
-        // başarısız olursa aynı değişiklikler bir dahaki sefere tekrar gider.
-        for record in payload.students where record.deletedAt == nil {
-            state.remember(record, kind: .student)
+    /// Gönderilen parçayı deftere işler: yazılanların özeti hatırlanır,
+    /// silinenler unutulur.
+    private func record(_ chunk: SyncPayload) {
+        func apply<T: SyncRecord>(_ records: [T], kind: RecordKind) {
+            for record in records {
+                if record.deletedAt == nil {
+                    state.remember(record, kind: kind)
+                } else {
+                    state.forget(record.clientId.uuidString)
+                }
+            }
         }
-        for record in payload.lessons where record.deletedAt == nil {
-            state.remember(record, kind: .lesson)
-        }
-        for record in payload.payments where record.deletedAt == nil {
-            state.remember(record, kind: .payment)
-        }
-        for record in payload.homeworks where record.deletedAt == nil {
-            state.remember(record, kind: .homework)
-        }
-        for record in payload.templates where record.deletedAt == nil {
-            state.remember(record, kind: .template)
-        }
-        for key in deleted {
-            state.forget(key)
-        }
+        apply(chunk.students, kind: .student)
+        apply(chunk.templates, kind: .template)
+        apply(chunk.payments, kind: .payment)
+        apply(chunk.lessons, kind: .lesson)
+        apply(chunk.homeworks, kind: .homework)
     }
 
     private func appendTombstone(kind: RecordKind, uuid: UUID, at now: Date, to payload: inout SyncPayload) {
