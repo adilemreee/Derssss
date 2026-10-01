@@ -2,7 +2,8 @@
 //  ProStore.swift
 //  One — Ders Defteri
 //
-//  StoreKit 2 abonelik yönetimi: ürünler, satın alma, sunucu doğrulaması.
+//  StoreKit 2 Pro yönetimi: abonelikler ve ömür boyu satın alma, sunucu
+//  doğrulaması.
 //
 
 import SwiftUI
@@ -13,7 +14,9 @@ import StoreKit
 final class ProStore {
     static let monthlyID = "dersdefteri.abonelik.aylik"
     static let yearlyID = "dersdefteri.abonelik.yillik"
-    static let productIDs: Set<String> = [monthlyID, yearlyID]
+    /// Tek seferlik (tüketilmeyen) satın alma; abonelik grubunda değildir.
+    static let lifetimeID = "dersdefteri.omurboyu"
+    static let productIDs: Set<String> = [monthlyID, yearlyID, lifetimeID]
 
     /// Ücretsiz sürümde izin verilen aktif öğrenci sayısı
     static let freeStudentLimit = 2
@@ -36,6 +39,20 @@ final class ProStore {
         didSet { UserDefaults.standard.set(serverActive, forKey: "proServerCache") }
     }
 
+    /// Cihazdaki App Store kaydında ömür boyu satın alma var.
+    private(set) var isLifetime: Bool = UserDefaults.standard.bool(forKey: "proLifetimeCache") {
+        didSet { UserDefaults.standard.set(isLifetime, forKey: "proLifetimeCache") }
+    }
+
+    /// Cihazdaki App Store kaydında yenilenen bir abonelik de var. Ömür boyu
+    /// alan biri aboneliğini iptal edebilsin diye yönetim düğmesi buna bakar.
+    private(set) var hasStoreKitSubscription = false
+
+    /// Ömür boyu satın almada yönetilecek bir abonelik yoktur.
+    var showsSubscriptionManagement: Bool {
+        isPro && (!isLifetime || hasStoreKitSubscription)
+    }
+
     private(set) var products: [Product] = []
     private(set) var isLoadingProducts = false
     /// Tanıtım teklifi (ücretsiz deneme) Apple hesabı başına bir kez kullanılır.
@@ -55,6 +72,7 @@ final class ProStore {
 
     var monthly: Product? { products.first { $0.id == Self.monthlyID } }
     var yearly: Product? { products.first { $0.id == Self.yearlyID } }
+    var lifetime: Product? { products.first { $0.id == Self.lifetimeID } }
 
     /// Yıllık planın aylığa göre yüzde kazancı
     var yearlySavingsPercent: Int? {
@@ -77,7 +95,7 @@ final class ProStore {
         do {
             products = try await Product.products(for: Self.productIDs)
                 .sorted { $0.price < $1.price }
-            if let subscription = products.first?.subscription {
+            if let subscription = products.first(where: { $0.subscription != nil })?.subscription {
                 isEligibleForTrial = await subscription.isEligibleForIntroOffer
             }
         } catch {
@@ -102,6 +120,7 @@ final class ProStore {
                     // Cihazdaki kayıt hemen açılır, sunucuya arkadan bildirilir;
                     // böylece ödeme sonrası ekran beklemeden Pro'ya geçer.
                     storeKitActive = true
+                    if transaction.productID == Self.lifetimeID { isLifetime = true }
                     await sendToServer(verification.jwsRepresentation)
                 }
             case .userCancelled, .pending:
@@ -125,21 +144,29 @@ final class ProStore {
 
     /// Cihazdaki App Store kaydını okur ve sunucuya bildirir.
     func refreshEntitlements() async {
-        var active = false
-        var latestJWS: String?
+        var lifetimeJWS: String?
+        var subscriptionJWS: String?
+        var subscriptionExpiry = Date.distantPast
 
         for await entitlement in Transaction.currentEntitlements {
-            if case .verified(let transaction) = entitlement,
-               Self.productIDs.contains(transaction.productID),
-               transaction.revocationDate == nil {
-                active = true
-                latestJWS = entitlement.jwsRepresentation
+            guard case .verified(let transaction) = entitlement,
+                  Self.productIDs.contains(transaction.productID),
+                  transaction.revocationDate == nil else { continue }
+            if transaction.productID == Self.lifetimeID {
+                lifetimeJWS = entitlement.jwsRepresentation
+            } else if (transaction.expirationDate ?? .distantFuture) > subscriptionExpiry {
+                subscriptionExpiry = transaction.expirationDate ?? .distantFuture
+                subscriptionJWS = entitlement.jwsRepresentation
             }
         }
-        storeKitActive = active
+        isLifetime = lifetimeJWS != nil
+        hasStoreKitSubscription = subscriptionJWS != nil
+        storeKitActive = isLifetime || hasStoreKitSubscription
 
-        if let latestJWS {
-            await sendToServer(latestJWS)
+        // Sunucu kullanıcı başına tek kayıt tutar. Ömür boyu varken abonelik
+        // gönderilirse, abonelik bitince sunucu eşitlemeyi kapatırdı.
+        if let jws = lifetimeJWS ?? subscriptionJWS {
+            await sendToServer(jws)
         }
     }
 

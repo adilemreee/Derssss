@@ -94,16 +94,21 @@ sonuna bak.)
 Ürün kimlikleri `ProStore.swift` içinde sabit — **birebir aynı** olmalı,
 yoksa uygulama ürünleri bulamaz ve paywall boş açılır.
 
-| Alan | Aylık | Yıllık |
-|---|---|---|
-| Ürün Kimliği | `dersdefteri.abonelik.aylik` | `dersdefteri.abonelik.yillik` |
-| Referans adı | Pro Aylık | Pro Yıllık |
-| Süre | 1 ay | 1 yıl |
-| Fiyat | ₺79,99 | ₺599,99 |
-| Görünen ad (tr) | Ders Defteri Pro Aylık | Ders Defteri Pro Yıllık |
-| Açıklama (tr) | Eşitleme, sınırsız öğrenci ve PDF veli raporu | Eşitleme, sınırsız öğrenci ve PDF veli raporu |
-| Aile paylaşımı | Kapalı | Kapalı |
-| Tanıtım teklifi | — | 1 hafta ücretsiz deneme |
+| Alan | Aylık | Yıllık | Ömür boyu |
+|---|---|---|---|
+| Tür | Otomatik yenilenen abonelik | Otomatik yenilenen abonelik | Tüketilmeyen (Non-Consumable) |
+| Ürün Kimliği | `dersdefteri.abonelik.aylik` | `dersdefteri.abonelik.yillik` | `dersdefteri.omurboyu` |
+| Referans adı | Pro Aylık | Pro Yıllık | Pro Ömür Boyu |
+| Süre | 1 ay | 1 yıl | — |
+| Fiyat | ₺129,99 | ₺899,99 | ₺2.499,99 |
+| Görünen ad (tr) | Ders Defteri Pro Aylık | Ders Defteri Pro Yıllık | Ders Defteri Pro Ömür Boyu |
+| Açıklama (tr) | Eşitleme, sınırsız öğrenci ve PDF veli raporu | Eşitleme, sınırsız öğrenci ve PDF veli raporu | Tek seferlik ödemeyle Pro'nun tüm özellikleri |
+| Aile paylaşımı | Kapalı | Kapalı | Kapalı |
+| Tanıtım teklifi | — | 1 hafta ücretsiz deneme | — |
+
+Ömür boyu ürünü abonelik grubunda değil, **In-App Purchases** altında
+oluşturulur. İlk kez gönderilirken uygulama sürümünün "Uygulama İçi Satın
+Alımlar ve Abonelikler" bölümüne eklenip sürümle birlikte incelemeye gider.
 
 - [ ] Abonelik grubuna görsel + yerelleştirilmiş açıklama ekle (Apple zorunlu).
 - [ ] Her iki ürün için **inceleme ekran görüntüsü** yükle (Apple zorunlu).

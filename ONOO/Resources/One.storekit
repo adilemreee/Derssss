@@ -14,7 +14,21 @@
 
   ],
   "products" : [
-
+    {
+      "displayPrice" : "2499.99",
+      "familyShareable" : false,
+      "internalID" : "D4E5F6A7-B8C9-40D1-82E3-F4A5B6C7D8E9",
+      "localizations" : [
+        {
+          "description" : "Tek seferlik ödemeyle Pro'nun tüm özellikleri",
+          "displayName" : "Ders Defteri Pro Ömür Boyu",
+          "locale" : "tr"
+        }
+      ],
+      "productID" : "dersdefteri.omurboyu",
+      "referenceName" : "Pro Ömür Boyu",
+      "type" : "NonConsumable"
+    }
   ],
   "settings" : {
     "_askToBuyEnabled" : false,
@@ -48,8 +62,8 @@
           "billingPlans" : [
             {
               "billingPlanType" : "BILLED_UPFRONT",
-              "commitmentDisplayPrice" : "79.99",
-              "displayPrice" : "79.99",
+              "commitmentDisplayPrice" : "129.99",
+              "displayPrice" : "129.99",
               "internalID" : "A2243A22",
               "isEnabled" : true
             }
@@ -57,7 +71,7 @@
           "codeOffers" : [
 
           ],
-          "displayPrice" : "79.99",
+          "displayPrice" : "129.99",
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "B1C2D3E4-F5A6-47B8-99C0-D1E2F3A4B5C6",
@@ -87,8 +101,8 @@
           "billingPlans" : [
             {
               "billingPlanType" : "BILLED_UPFRONT",
-              "commitmentDisplayPrice" : "599.99",
-              "displayPrice" : "599.99",
+              "commitmentDisplayPrice" : "899.99",
+              "displayPrice" : "899.99",
               "internalID" : "84FF12CF",
               "isEnabled" : true
             }
@@ -96,7 +110,7 @@
           "codeOffers" : [
 
           ],
-          "displayPrice" : "599.99",
+          "displayPrice" : "899.99",
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "C2D3E4F5-A6B7-48C9-90D1-E2F3A4B5C6D7",

@@ -42,7 +42,7 @@ struct SettingsView: View {
                 Section {
                     if proStore.isPro {
                         Label {
-                            Text("Ders Defteri Pro aktif")
+                            Text(proStore.isLifetime ? "Ders Defteri Pro · Ömür boyu" : "Ders Defteri Pro aktif")
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(Theme.ink)
                         } icon: {

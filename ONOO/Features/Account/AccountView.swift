@@ -71,7 +71,7 @@ struct AccountView: View {
                             .font(.caption)
                             .foregroundStyle(Theme.red)
                     }
-                    if proStore.isPro {
+                    if proStore.showsSubscriptionManagement {
                         Button {
                             showManageSubscriptions = true
                         } label: {

@@ -12,6 +12,9 @@ import {
 
 const ENTITLEMENT_TTL_SECONDS = 300;
 
+/// Tek seferlik satın alma; süresi yoktur (`expiresAt` boş kalır).
+const LIFETIME_PRODUCT_ID = 'dersdefteri.omurboyu';
+
 export interface Entitlement {
   isPro: boolean;
   productId: string | null;
@@ -105,6 +108,19 @@ export async function subscriptionRoutes(app: FastifyInstance) {
           .code(409)
           .send({ error: 'subscription_owned', message: 'Bu abonelik başka bir hesaba bağlı.' });
       }
+    }
+
+    // Kullanıcı başına tek kayıt tutulur. Ömür boyu satın alan birinin eski
+    // aboneliği (ya da bunu bilmeyen eski bir uygulama sürümü) kaydı ezerse,
+    // abonelik bittiğinde Pro yanlışlıkla kapanırdı.
+    const current = await prisma.subscription.findUnique({ where: { userId } });
+    if (
+      current &&
+      current.productId === LIFETIME_PRODUCT_ID &&
+      !current.revokedAt &&
+      productId !== LIFETIME_PRODUCT_ID
+    ) {
+      return reply.send(entitlementFrom(current));
     }
 
     // Aynı Apple aboneliği başka bir hesaba bağlıysa devret: kullanıcı hesabını

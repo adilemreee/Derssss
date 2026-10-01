@@ -2,7 +2,7 @@
 //  PaywallView.swift
 //  One — Ders Defteri
 //
-//  One Pro abonelik ekranı.
+//  Ders Defteri Pro satın alma ekranı: abonelikler ve ömür boyu.
 //
 
 import SwiftUI
@@ -139,16 +139,41 @@ struct PaywallView: View {
             .padding(.vertical, 16)
         } else {
             VStack(spacing: 10) {
-                ForEach(store.products.reversed(), id: \.id) { product in
+                ForEach(orderedProducts, id: \.id) { product in
                     planCard(product)
                 }
             }
         }
     }
 
+    /// Önerilen plan üstte, tek seferlik seçenek en altta.
+    private var orderedProducts: [Product] {
+        [ProStore.yearlyID, ProStore.monthlyID, ProStore.lifetimeID].compactMap { id in
+            store.products.first { $0.id == id }
+        }
+    }
+
+    private func title(_ product: Product) -> String {
+        switch product.id {
+        case ProStore.yearlyID: "Yıllık"
+        case ProStore.lifetimeID: "Ömür Boyu"
+        default: "Aylık"
+        }
+    }
+
+    /// Fiyatın hangi dönem için olduğu; ömür boyu satın almada dönem yoktur.
+    private func periodUnit(_ product: Product) -> String? {
+        switch product.id {
+        case ProStore.yearlyID: "yıl"
+        case ProStore.lifetimeID: nil
+        default: "ay"
+        }
+    }
+
     private func planCard(_ product: Product) -> some View {
         let isSelected = product.id == selectedID
         let isYearly = product.id == ProStore.yearlyID
+        let unit = periodUnit(product)
         return Button {
             selectedID = product.id
         } label: {
@@ -158,7 +183,7 @@ struct PaywallView: View {
                     .foregroundStyle(isSelected ? Theme.accent : Theme.inkSoft.opacity(0.5))
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
-                        Text(isYearly ? "Yıllık" : "Aylık")
+                        Text(title(product))
                             .font(.subheadline.weight(.bold))
                             .foregroundStyle(Theme.ink)
                             .fixedSize()
@@ -168,10 +193,14 @@ struct PaywallView: View {
                     }
                     // Denemeden sonra ne ödeneceği denemeyle aynı yerde
                     // yazmalı; yalnızca "ücretsiz" demek yanıltıcı sayılır.
-                    if let trial = freeTrial(product) {
-                        Text("İlk \(trialLength(trial)) ücretsiz, sonra \(product.displayPrice)/\(isYearly ? "yıl" : "ay")")
+                    if let trial = freeTrial(product), let unit {
+                        Text("İlk \(trialLength(trial)) ücretsiz, sonra \(product.displayPrice)/\(unit)")
                             .font(.caption)
                             .foregroundStyle(Theme.green)
+                    } else if unit == nil {
+                        Text("Bir kez öde, abonelik yok")
+                            .font(.caption)
+                            .foregroundStyle(Theme.inkSoft)
                     }
                 }
                 Spacer()
@@ -180,7 +209,7 @@ struct PaywallView: View {
                         .font(.headline.weight(.bold))
                         .fontDesign(.serif)
                         .foregroundStyle(Theme.ink)
-                    Text(isYearly ? "yılda bir" : "ayda bir")
+                    Text(unit.map { "\($0)da bir" } ?? "tek ödeme")
                         .font(.caption2)
                         .foregroundStyle(Theme.inkSoft)
                     if isYearly {
@@ -275,7 +304,9 @@ struct PaywallView: View {
     }
 
     private func priceSummary(_ product: Product) -> String {
-        let period = product.id == ProStore.yearlyID ? "yıl" : "ay"
+        guard let period = periodUnit(product) else {
+            return "\(product.displayPrice) tek seferlik ödeme. Abonelik değildir, yenilenmez."
+        }
         if let trial = freeTrial(product) {
             return "\(trialLength(trial).capitalized(with: Locale(identifier: "tr_TR"))) ücretsiz, sonra \(product.displayPrice)/\(period). İstediğin zaman iptal edebilirsin."
         }
@@ -301,7 +332,7 @@ struct PaywallView: View {
     /// bağlantısı bulunmalı (App Store yönergesi 3.1.2).
     private var legalNote: some View {
         VStack(spacing: 8) {
-            Text("Abonelik, dönem sonunda iptal edilmediği sürece otomatik yenilenir. İstediğin zaman App Store hesabından iptal edebilirsin. Mevcut verilerin abonelik durumundan bağımsız olarak sende kalır.")
+            Text("Aylık ve yıllık abonelik, dönem sonunda iptal edilmediği sürece otomatik yenilenir. İstediğin zaman App Store hesabından iptal edebilirsin. Ömür boyu tek seferlik ödemedir, yenilenmez. Mevcut verilerin Pro durumundan bağımsız olarak sende kalır.")
                 .font(.caption2)
                 .foregroundStyle(Theme.inkSoft.opacity(0.8))
                 .multilineTextAlignment(.center)

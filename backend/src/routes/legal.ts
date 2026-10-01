@@ -103,9 +103,10 @@ geri alınamaz ve sunucudaki tüm verilerinizi kapsar.</p>
 <p>Ders Defteri, özel ders kayıtlarınızı tutmanız için sunulan bir uygulamadır.
 Uygulamayı yürürlükteki mevzuata uygun şekilde kullanmayı kabul edersiniz.</p>
 
-<h2>Abonelik</h2>
+<h2>Abonelik ve ömür boyu satın alma</h2>
 <ul>
-  <li>Ders Defteri Pro, aylık veya yıllık otomatik yenilenen bir aboneliktir.</li>
+  <li>Ders Defteri Pro, aylık veya yıllık otomatik yenilenen bir abonelik ya da
+  tek seferlik ömür boyu satın alma olarak sunulur.</li>
   <li>Ücret, satın alma onaylandığında App Store hesabınızdan tahsil edilir.</li>
   <li>Abonelik, mevcut dönemin bitiminden en az 24 saat önce iptal edilmediği
   sürece otomatik olarak yenilenir ve aynı tutar üzerinden ücretlendirilir.</li>
@@ -114,10 +115,13 @@ Uygulamayı yürürlükteki mevzuata uygun şekilde kullanmayı kabul edersiniz.
   <li>Ücretsiz deneme süresi sunulduğunda, deneme bitmeden abonelik iptal
   edilmezse ücretli döneme geçilir. Denemenin kullanılmayan kısmı, abonelik
   satın alındığında sona erer.</li>
+  <li>Ömür boyu satın alma tek seferlik bir ödemedir, yenilenmez ve iptal
+  edilmesi gerekmez. Aynı Apple Kimliği ile kullanılan cihazlarda
+  <em>Satın Alımları Geri Yükle</em> ile tekrar etkinleştirilebilir.</li>
 </ul>
 
 <h2>Ücretsiz sürüm</h2>
-<p>Abonelik olmadan uygulama sınırlı sayıda aktif öğrenci ile kullanılabilir.
+<p>Pro olmadan uygulama sınırlı sayıda aktif öğrenci ile kullanılabilir.
 Aboneliğiniz sona erdiğinde verileriniz silinmez; sınırın üzerindeki kayıtlar
 görüntülenmeye devam eder, yeni kayıt ekleme kısıtlanır.</p>
 

@@ -186,7 +186,7 @@ Yeni cihaza geçmeden önce <em>Ayarlar → Eşitleme</em> bölümünden eşitle
 İptal işlemi Apple tarafından yönetilir, uygulamadan yapılamaz.
 İptal ettiğinde kayıtların silinmez.</p>
 
-<h3>Aboneliğim göründüğü halde Pro açılmadı.</h3>
+<h3>Aboneliğim ya da ömür boyu satın almam göründüğü halde Pro açılmadı.</h3>
 <p class="muted">Uygulamada <em>Ayarlar → Ders Defteri Pro → Satın Alımları Geri Yükle</em> düğmesini kullan.
 Sorun sürerse App Store hesabının ülkesi ile satın alma yaptığın hesabın aynı olduğundan emin ol.</p>
 

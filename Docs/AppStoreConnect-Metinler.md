@@ -73,14 +73,15 @@ HATIRLATMALAR
 
 DERS DEFTERİ PRO
 Ücretsiz sürümde 2 aktif öğrenciye kadar tüm temel özellikler açıktır.
-Pro aboneliğiyle şunlar gelir:
+Pro ile şunlar gelir (aylık, yıllık ya da tek seferlik ömür boyu):
 • Sınırsız öğrenci
 • Cihazlar arası eşitleme — defterin hesabına yedeklenir, yeni telefonda giriş yapman yeterli
 • PDF veli raporu — dersleri, ödevleri ve bakiyeyi tek belgede veliye gönder
 • Günlük program özeti — her sabah o günün tüm dersleri tek bildirimde
 
-ABONELİK BİLGİLERİ
-Ders Defteri Pro aylık veya yıllık otomatik yenilenen bir aboneliktir.
+ABONELİK VE ÖMÜR BOYU
+Ders Defteri Pro aylık veya yıllık otomatik yenilenen bir abonelik ya da tek
+seferlik ömür boyu satın alma olarak sunulur. Ömür boyu satın alma yenilenmez.
 Ücret, satın alma onaylandığında App Store hesabınızdan tahsil edilir.
 Abonelik, mevcut dönemin bitiminden en az 24 saat önce iptal edilmediği sürece
 otomatik olarak yenilenir. Aboneliğinizi iPhone Ayarlar > Apple Kimliği >
@@ -191,9 +192,11 @@ data is stored on the device.
 - Payments tab (Ödemeler) -> "+" to record a payment.
 - Homework tab (Ödevler) -> "+" to assign homework.
 
-In-app purchase - Ders Defteri Pro (auto-renewable subscription):
-- Monthly: dersdefteri.abonelik.aylik; Yearly: dersdefteri.abonelik.yillik with a
-  1-week free trial for eligible users.
+In-app purchases - Ders Defteri Pro:
+- Auto-renewable subscriptions: Monthly dersdefteri.abonelik.aylik; Yearly
+  dersdefteri.abonelik.yillik with a 1-week free trial for eligible users.
+- Non-consumable: Lifetime dersdefteri.omurboyu (one-time purchase, same
+  features as the subscription, restorable with Restore Purchases).
 - Pro unlocks: sync across devices with an account, unlimited students
   (free: 2), PDF parent report and daily schedule summary notification.
   Weekly recurring lessons and CSV export are free for everyone.
@@ -278,7 +281,18 @@ Drive / Google Drive paylaşım bağlantısını (herkese açık görüntüleme)
 
 ---
 
-## Sürüm notları (What's New) — widget ve toplu ödeme güncellemesi
+## Sürüm notları (What's New) — 2.2: ömür boyu seçeneği
+
+```
+Bu sürümde neler var?
+
+• Yeni: Ders Defteri Pro'yu abonelik olmadan, tek seferlik ödemeyle ömür boyu alabilirsin.
+• Satın alma ekranı yenilendi: yıllık, aylık ve ömür boyu seçenekleri yan yana.
+```
+
+---
+
+## Sürüm notları (What's New) — widget ve toplu ödeme güncellemesi (2.1)
 
 ```
 Bu sürümde neler var?
