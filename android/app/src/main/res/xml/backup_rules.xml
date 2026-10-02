@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11 ve öncesi: oturum jetonları yedeğe girmez -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="auth.xml" />
+    <exclude domain="sharedpref" path="account.xml" />
+    <exclude domain="sharedpref" path="notifications.xml" />
+</full-backup-content>

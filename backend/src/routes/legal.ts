@@ -8,7 +8,7 @@ import { config } from '../config.js';
  * servis edilir.
  */
 
-const LAST_UPDATED = '17 Ağustos 2026';
+const LAST_UPDATED = '2 Ekim 2026';
 
 function page(title: string, body: string): string {
   return `<!doctype html>
@@ -55,15 +55,17 @@ işlediğini açıklar.</p>
 
 <h2>Toplanan veriler</h2>
 <ul>
-  <li><strong>Hesap bilgisi:</strong> Apple ile Giriş kullanıldığında Apple'ın
-  bize verdiği kalıcı kullanıcı kimliği ve —paylaşmayı seçtiyseniz— e-posta
-  adresiniz. Apple'ın "E-postamı Gizle" seçeneğini kullanırsanız gerçek
-  adresinizi hiçbir zaman görmeyiz.</li>
+  <li><strong>Hesap bilgisi (yalnızca eşitlemeyi açarsanız):</strong> iPhone'da
+  Apple ile Giriş kullanıldığında Apple'ın bize verdiği kalıcı kullanıcı kimliği
+  ve —paylaşmayı seçtiyseniz— e-posta adresiniz; Apple'ın "E-postamı Gizle"
+  seçeneğini kullanırsanız gerçek adresinizi hiçbir zaman görmeyiz. Android'de
+  Google ile Giriş kullanıldığında Google hesabınızın kalıcı kimliği, e-posta
+  adresiniz ve adınız.</li>
   <li><strong>Uygulama içeriği:</strong> Uygulamaya girdiğiniz öğrenci adları,
   ders programı, ücret ve ödeme kayıtları, ödevler ve notlar.</li>
-  <li><strong>Abonelik durumu:</strong> App Store'un ürettiği işlem kimliği ve
-  aboneliğin bitiş tarihi. Ödeme bilgileriniz Apple'da kalır; kart numaranız
-  bize hiçbir zaman ulaşmaz.</li>
+  <li><strong>Abonelik durumu:</strong> App Store'un ya da Google Play'in ürettiği
+  satın alma kimliği ve aboneliğin bitiş tarihi. Ödeme bilgileriniz Apple'da ya
+  da Google'da kalır; kart numaranız bize hiçbir zaman ulaşmaz.</li>
 </ul>
 
 <h2>Verilerin kullanımı</h2>
@@ -83,9 +85,11 @@ sorumluluk, kayıtları oluşturan öğretmene aittir. Bu veriler yalnızca sizi
 hesabınız içinde görünür.</p>
 
 <h2>Verilerinizi silme</h2>
-<p>Uygulama içinden <em>Ayarlar → Hesap → Hesabı Sil</em> adımlarıyla
+<p>Uygulama içinden <em>Ayarlar → Eşitleme ve Hesap → Hesabı Sil</em> adımlarıyla
 hesabınızı ve tüm kayıtlarınızı kalıcı olarak silebilirsiniz. Silme işlemi
-geri alınamaz ve sunucudaki tüm verilerinizi kapsar.</p>
+geri alınamaz ve sunucudaki tüm verilerinizi kapsar. Uygulamaya erişiminiz
+yoksa <a href="${config.PUBLIC_BASE_URL}/hesap-silme">hesap silme sayfasındaki</a>
+adımlarla e-postayla da talep edebilirsiniz.</p>
 
 <h2>İletişim</h2>
 <p>Sorularınız için: <a href="mailto:${config.SUPPORT_EMAIL}">${config.SUPPORT_EMAIL}</a></p>
@@ -107,17 +111,20 @@ Uygulamayı yürürlükteki mevzuata uygun şekilde kullanmayı kabul edersiniz.
 <ul>
   <li>Ders Defteri Pro, aylık veya yıllık otomatik yenilenen bir abonelik ya da
   tek seferlik ömür boyu satın alma olarak sunulur.</li>
-  <li>Ücret, satın alma onaylandığında App Store hesabınızdan tahsil edilir.</li>
+  <li>Ücret, satın alma onaylandığında App Store ya da Google Play hesabınızdan
+  tahsil edilir.</li>
   <li>Abonelik, mevcut dönemin bitiminden en az 24 saat önce iptal edilmediği
   sürece otomatik olarak yenilenir ve aynı tutar üzerinden ücretlendirilir.</li>
-  <li>Aboneliğinizi <em>Ayarlar → Apple Kimliği → Abonelikler</em> üzerinden
-  dilediğiniz zaman yönetebilir veya iptal edebilirsiniz.</li>
+  <li>Aboneliğinizi iPhone'da <em>Ayarlar → Apple Kimliği → Abonelikler</em>,
+  Android'de <em>Google Play → Profil → Ödemeler ve abonelikler → Abonelikler</em>
+  üzerinden dilediğiniz zaman yönetebilir veya iptal edebilirsiniz.</li>
   <li>Ücretsiz deneme süresi sunulduğunda, deneme bitmeden abonelik iptal
   edilmezse ücretli döneme geçilir. Denemenin kullanılmayan kısmı, abonelik
   satın alındığında sona erer.</li>
   <li>Ömür boyu satın alma tek seferlik bir ödemedir, yenilenmez ve iptal
-  edilmesi gerekmez. Aynı Apple Kimliği ile kullanılan cihazlarda
-  <em>Satın Alımları Geri Yükle</em> ile tekrar etkinleştirilebilir.</li>
+  edilmesi gerekmez. Aynı Apple Kimliği (iPhone) ya da aynı Google hesabı
+  (Android) ile kullanılan cihazlarda <em>Satın Alımları Geri Yükle</em> ile
+  tekrar etkinleştirilebilir.</li>
 </ul>
 
 <h2>Ücretsiz sürüm</h2>
@@ -136,6 +143,44 @@ hesaplamalardan doğabilecek dolaylı zararlardan geliştirici sorumlu tutulamaz
 
 <h2>İletişim</h2>
 <p><a href="mailto:${config.SUPPORT_EMAIL}">${config.SUPPORT_EMAIL}</a></p>
+`,
+      ),
+    );
+  });
+
+  /// Hesap ve veri silme. Google Play, hesap açılabilen uygulamalardan
+  /// uygulama dışından da silme talep edilebilecek bir sayfa ister.
+  app.get('/hesap-silme', async (_request, reply) => {
+    reply.type('text/html; charset=utf-8').send(
+      page(
+        'Hesap ve Veri Silme',
+        `
+<p>Ders Defteri'nde hesap yalnızca cihazlar arası eşitleme için açılır. Hesabınızı
+ve sunucudaki tüm kayıtlarınızı (öğrenciler, dersler, ödemeler, ödevler ve
+abonelik kaydı) kalıcı olarak silebilirsiniz.</p>
+
+<h2>Uygulamadan silme</h2>
+<ol>
+  <li>Ders Defteri'ni açın.</li>
+  <li><em>Ayarlar → Eşitleme ve Hesap</em> bölümüne girin.</li>
+  <li><em>Hesabı Sil</em>'e dokunup onaylayın.</li>
+</ol>
+<p>Silme anında yapılır ve geri alınamaz. Cihazınızdaki defter silinmez; onu
+uygulamayı kaldırarak temizleyebilirsiniz.</p>
+
+<h2>E-postayla talep</h2>
+<p>Uygulamaya erişiminiz yoksa, hesabınızı açarken kullandığınız e-posta
+adresinden <a href="mailto:${config.SUPPORT_EMAIL}?subject=Hesap%20silme%20talebi">${config.SUPPORT_EMAIL}</a>
+adresine "Hesap silme talebi" konulu bir e-posta gönderin. Kimliğiniz
+doğrulandıktan sonra hesabınız ve tüm verileriniz en geç 30 gün içinde silinir.</p>
+
+<h2>Neler silinir, neler kalır?</h2>
+<ul>
+  <li>Silinir: hesap bilgileriniz ve sunucudaki tüm defter kayıtlarınız.</li>
+  <li>Kalmaz: sunucuda hiçbir kopya ya da yedek tutulmaya devam etmez.</li>
+  <li>Abonelik: hesabı silmek aboneliği iptal etmez. Aboneliği App Store ya da
+  Google Play'den ayrıca iptal etmeniz gerekir.</li>
+</ul>
 `,
       ),
     );

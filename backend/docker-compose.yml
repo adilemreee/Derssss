@@ -17,6 +17,9 @@ services:
       # Apple ile Giriş anahtarı; APPLE_SIGNIN_KEY_ID .env'de verilince devreye girer.
       APPLE_TEAM_ID: GHV7BT96W7
       APPLE_SIGNIN_PRIVATE_KEY_PATH: /secrets/SignInKey.p8
+      # Android satın alma doğrulaması: Google Play hizmet hesabı anahtarı.
+      # Dosya yoksa Play doğrulaması kapalı kalır (verify-google 503 döner).
+      GOOGLE_PLAY_SERVICE_ACCOUNT_PATH: /secrets/google-play.json
     volumes:
       - ./secrets:/secrets:ro
     ports:

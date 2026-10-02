@@ -177,26 +177,28 @@ uygulama içinden kalıcı olarak silebilirsin.</p>
 Hesap yalnızca cihazlar arası eşitleme için gerekir; o da Ders Defteri Pro'ya dahildir.</p>
 
 <h3>Yeni telefona geçtim, kayıtlarım nerede?</h3>
-<p class="muted">Eşitlemeyi açtıysan aynı Apple hesabıyla giriş yapman yeterli — kayıtların geri gelir.
+<p class="muted">Eşitlemeyi açtıysan aynı hesapla giriş yapman yeterli (iPhone'da Apple, Android'de Google hesabı) — kayıtların geri gelir.
 Eşitleme kapalıyken defter yalnızca eski cihazda tutulduğu için aktarılamaz.
 Yeni cihaza geçmeden önce <em>Ayarlar → Eşitleme</em> bölümünden eşitlemeyi açman önerilir.</p>
 
 <h3>Aboneliğimi nasıl iptal ederim?</h3>
-<p class="muted">iPhone'da <em>Ayarlar → (adın) → Abonelikler</em> yolunu izle.
-İptal işlemi Apple tarafından yönetilir, uygulamadan yapılamaz.
-İptal ettiğinde kayıtların silinmez.</p>
+<p class="muted">iPhone'da <em>Ayarlar → (adın) → Abonelikler</em>, Android'de
+<em>Google Play → Profil → Ödemeler ve abonelikler → Abonelikler</em> yolunu izle.
+İptal işlemi Apple ya da Google tarafından yönetilir. İptal ettiğinde kayıtların silinmez.</p>
 
 <h3>Aboneliğim ya da ömür boyu satın almam göründüğü halde Pro açılmadı.</h3>
 <p class="muted">Uygulamada <em>Ayarlar → Ders Defteri Pro → Satın Alımları Geri Yükle</em> düğmesini kullan.
-Sorun sürerse App Store hesabının ülkesi ile satın alma yaptığın hesabın aynı olduğundan emin ol.</p>
+Sorun sürerse satın almayı yaptığın Apple ya da Google hesabıyla giriş yaptığından emin ol.</p>
 
 <h3>Ders ücretini sonradan değiştirirsem eski dersler etkilenir mi?</h3>
 <p class="muted">Hayır. Her ders, işlendiği andaki ücretle kilitlenir.
 Saatlik ücreti güncellemen geçmiş kayıtları ve hesaplanmış bakiyeyi bozmaz.</p>
 
 <h3>Ödevler ve dersler için bildirim gelmiyor.</h3>
-<p class="muted">iPhone <em>Ayarlar → Bildirimler → Ders Defteri</em> altında izin verildiğinden emin ol.
-Uygulama içinde <em>Ayarlar</em> bölümünden hatırlatıcıların açık olduğunu da kontrol et.</p>
+<p class="muted">Telefonun ayarlarında Ders Defteri'nin bildirimlerine izin verildiğinden emin ol
+(iPhone: <em>Ayarlar → Bildirimler</em>, Android: <em>Ayarlar → Uygulamalar → Ders Defteri → Bildirimler</em>).
+Uygulama içinde <em>Ayarlar</em> bölümünden hatırlatıcıların açık olduğunu da kontrol et.
+Android'de hatırlatmaların dakikasında gelmesi için <em>Ayarlar → Tam zamanında hatırlat</em> iznini aç.</p>
 
 <h3>Hesabımı ve verilerimi silmek istiyorum.</h3>
 <p class="muted">Uygulamada <em>Ayarlar → Eşitleme ve Hesap → Hesabı Sil</em>.
@@ -209,9 +211,8 @@ ve ödev kayıtlarını CSV dosyaları olarak alabilirsin. Bu dosyalar Excel ve 
 </div>
 
 <h2>Hâlâ çözülmediyse</h2>
-<p class="muted">E-postana şunları eklersen çok daha hızlı çözerim: kullandığın iPhone modeli,
-iOS sürümü, uygulama sürümü (<em>Ayarlar</em> ekranının en altında yazar) ve sorunun
-ekran görüntüsü.</p>
+<p class="muted">E-postana şunları eklersen çok daha hızlı çözerim: kullandığın telefon modeli,
+iOS ya da Android sürümü, uygulama sürümü ve sorunun ekran görüntüsü.</p>
 `,
       ),
     );

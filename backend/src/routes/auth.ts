@@ -6,6 +6,7 @@ import {
   revokeAppleToken,
   verifyAppleIdentityToken,
 } from '../lib/appleAuth.js';
+import { googleSignInConfigured, verifyGoogleIdToken } from '../lib/googleAuth.js';
 import {
   accessTokenTTL,
   consumeRefreshToken,
@@ -22,6 +23,12 @@ const appleSignInBody = z.object({
   fullName: z.string().max(120).optional(),
   /// Tek kullanımlık yetki kodu; hesap silinirken iptal için takas edilir.
   authorizationCode: z.string().max(1000).optional(),
+});
+
+const googleSignInBody = z.object({
+  idToken: z.string().min(1),
+  /// Cihazın ürettiği tek kullanımlık değer; jetondaki `nonce` ile eşleşmeli.
+  nonce: z.string().max(200).optional(),
 });
 
 const refreshBody = z.object({
@@ -73,6 +80,52 @@ export async function authRoutes(app: FastifyInstance) {
         request.log.warn({ err }, 'apple yetki kodu takas edilemedi');
       }
     }
+
+    const refreshToken = await issueRefreshToken(user.id);
+    return reply.send({
+      accessToken: issueAccessToken(user.id),
+      refreshToken,
+      expiresIn: accessTokenTTL,
+      user: { id: user.id, email: user.email, name: user.name },
+    });
+  });
+
+  /**
+   * Android: Google ile giriş. Google hesabı Apple hesabından ayrıdır; aynı
+   * kişi iki platformda iki ayrı hesap açmış olur.
+   */
+  app.post('/v1/auth/google', {
+    config: { rateLimit: { max: 20, timeWindow: '5 minutes' } },
+  }, async (request, reply) => {
+    const parsed = googleSignInBody.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_body', message: 'Giriş bilgileri eksik.' });
+    }
+    if (!googleSignInConfigured()) {
+      return reply.code(503).send({ error: 'not_configured', message: 'Google ile giriş henüz açılmadı.' });
+    }
+
+    let identity;
+    try {
+      identity = await verifyGoogleIdToken(parsed.data.idToken, parsed.data.nonce);
+    } catch (err) {
+      request.log.warn({ err }, 'google kimlik jetonu doğrulanamadı');
+      return reply.code(401).send({ error: 'invalid_token', message: 'Google girişi doğrulanamadı.' });
+    }
+
+    const user = await prisma.user.upsert({
+      where: { googleSub: identity.sub },
+      create: {
+        googleSub: identity.sub,
+        email: identity.email ?? null,
+        name: identity.name ?? null,
+      },
+      update: {
+        lastSeenAt: new Date(),
+        ...(identity.email ? { email: identity.email } : {}),
+        ...(identity.name ? { name: identity.name } : {}),
+      },
+    });
 
     const refreshToken = await issueRefreshToken(user.id);
     return reply.send({

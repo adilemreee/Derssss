@@ -1,0 +1,4 @@
+# Linux/macOS başlatma betiği LF, Windows betiği CRLF kalmalı
+/gradlew        text eol=lf
+*.bat           text eol=crlf
+*.jar           binary

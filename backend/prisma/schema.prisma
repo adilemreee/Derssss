@@ -21,7 +21,10 @@ datasource db {
 
 model User {
   id            String    @id @default(uuid())
-  appleSub      String    @unique
+  /// Apple ile Giriş (iOS). Google ile açılan hesapta boştur.
+  appleSub      String?   @unique
+  /// Google ile Giriş (Android). Apple ile açılan hesapta boştur.
+  googleSub     String?   @unique
   email         String?
   name          String?
   /// Apple'ın verdiği yenileme jetonu. Yalnızca hesap silinirken Apple
@@ -213,6 +216,10 @@ model Subscription {
   expiresAt             DateTime?
   autoRenew             Boolean   @default(true)
   revokedAt             DateTime?
+  /// app_store | google_play
+  store                 String    @default("app_store")
+  /// Google Play kaydının Play'e en son sorulduğu an
+  lastCheckedAt         DateTime?
 
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt

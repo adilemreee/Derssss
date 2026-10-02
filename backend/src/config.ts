@@ -31,6 +31,24 @@ const schema = z.object({
   APPLE_SIGNIN_KEY_ID: z.string().optional(),
   APPLE_SIGNIN_PRIVATE_KEY_PATH: z.string().optional(),
 
+  /// Android: Google ile Giriş. Google Cloud'daki "Web uygulaması" türündeki
+  /// OAuth istemci kimliği; Android uygulaması kimlik jetonunu bu kimlik için
+  /// ister. Boş bırakılırsa Google ile giriş kapalıdır.
+  GOOGLE_WEB_CLIENT_ID: z.string().optional(),
+
+  /// Android paket adı; Play satın almaları bu paket için doğrulanır.
+  GOOGLE_PLAY_PACKAGE: z.string().default('xyz.adilemree.dersdefteri'),
+
+  /// Google Play Developer API hizmet hesabı anahtarı (JSON dosyası). Boş
+  /// bırakılırsa Android satın almaları sunucuda doğrulanamaz ve Android'de
+  /// eşitleme Pro olarak tanınmaz.
+  GOOGLE_PLAY_SERVICE_ACCOUNT_PATH: z.string().optional(),
+
+  /// Google Play gerçek zamanlı bildirimleri (Pub/Sub push) için adreste
+  /// taşınan gizli değer. Boşsa bildirim ucu kapalıdır; iptal ve iadeler
+  /// sunucunun periyodik Play sorgusuyla öğrenilir.
+  GOOGLE_RTDN_TOKEN: z.string().optional(),
+
   /// App Store Connect'te göstereceğin URL'ler bu sunucudan servis edilir.
   PUBLIC_BASE_URL: z.string().default('https://dersapi.adilemree.xyz'),
   SUPPORT_EMAIL: z.string().default('destek@adilemree.xyz'),

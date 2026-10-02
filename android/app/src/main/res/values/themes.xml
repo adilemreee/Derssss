@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Açılış (splash) teması: kağıt zemin, uygulama ikonu -->
+    <style name="Theme.DersDefteri.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/paper</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.DersDefteri</item>
+    </style>
+
+    <style name="Theme.DersDefteri" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/paper</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+</resources>

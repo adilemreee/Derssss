@@ -9,6 +9,12 @@ import {
   verifyRenewalInfo,
   verifyTransaction,
 } from '../lib/appstore.js';
+import { config } from '../config.js';
+import {
+  googlePlayConfigured,
+  PlayPurchaseNotFound,
+  verifyPlayPurchase,
+} from '../lib/googleplay.js';
 
 const ENTITLEMENT_TTL_SECONDS = 300;
 
@@ -46,7 +52,8 @@ export async function readEntitlement(userId: string): Promise<Entitlement> {
   const cached = await redis.get(`ent:${userId}`);
   if (cached) return JSON.parse(cached) as Entitlement;
 
-  const sub = await prisma.subscription.findUnique({ where: { userId } });
+  let sub = await prisma.subscription.findUnique({ where: { userId } });
+  if (sub && sub.store === 'google_play') sub = await refreshGooglePurchase(sub);
   const entitlement = entitlementFrom(sub);
   await redis.set(`ent:${userId}`, JSON.stringify(entitlement), 'EX', ENTITLEMENT_TTL_SECONDS);
   return entitlement;
@@ -54,6 +61,45 @@ export async function readEntitlement(userId: string): Promise<Entitlement> {
 
 async function invalidateEntitlement(userId: string): Promise<void> {
   await redis.del(`ent:${userId}`);
+}
+
+type SubscriptionRow = NonNullable<Awaited<ReturnType<typeof prisma.subscription.findUnique>>>;
+
+/**
+ * Google Play'in App Store'daki gibi imzalı bildirimi her zaman gelmeyebilir
+ * (gerçek zamanlı bildirimler ayrıca kurulur). Bu yüzden Android kaydı
+ * okunurken gerekiyorsa Play'e yeniden sorulur: süresi dolmuş görünen
+ * abonelik (yenilenmiş olabilir) saatte bir, aktif olan (iade ya da iptal
+ * için) günde bir. Play'e ulaşılamazsa son bilinen durum geçerli kalır.
+ */
+async function refreshGooglePurchase(sub: SubscriptionRow): Promise<SubscriptionRow> {
+  if (!googlePlayConfigured() || sub.revokedAt) return sub;
+  const age = Date.now() - (sub.lastCheckedAt?.getTime() ?? 0);
+  const due = entitlementFrom(sub).isPro ? age > 24 * 3600_000 : age > 3600_000;
+  if (!due) return sub;
+  try {
+    const state = await verifyPlayPurchase(sub.productId, sub.originalTransactionId.replace(/^gp:/, ''));
+    return await prisma.subscription.update({
+      where: { id: sub.id },
+      data: {
+        productId: state.productId,
+        status: state.status,
+        expiresAt: state.expiresAt,
+        revokedAt: state.revokedAt,
+        autoRenew: state.autoRenew,
+        lastCheckedAt: new Date(),
+      },
+    });
+  } catch (err) {
+    if (err instanceof PlayPurchaseNotFound) {
+      return await prisma.subscription.update({
+        where: { id: sub.id },
+        data: { status: 'revoked', revokedAt: new Date(), lastCheckedAt: new Date() },
+      });
+    }
+    // Geçici hata: bir sonraki denemeye kadar Play'e yük bindirilmez.
+    return await prisma.subscription.update({ where: { id: sub.id }, data: { lastCheckedAt: new Date() } });
+  }
 }
 
 export async function subscriptionRoutes(app: FastifyInstance) {
@@ -138,6 +184,7 @@ export async function subscriptionRoutes(app: FastifyInstance) {
       environment: tx.environment ?? 'Production',
       expiresAt,
       revokedAt,
+      store: 'app_store',
     };
 
     const saved = await prisma.subscription.upsert({
@@ -148,6 +195,138 @@ export async function subscriptionRoutes(app: FastifyInstance) {
 
     await invalidateEntitlement(userId);
     return reply.send(entitlementFrom(saved));
+  });
+
+  /**
+   * Android: cihazdaki Google Play satın almasını doğrular ve hesaba bağlar.
+   *
+   * Satın alma jetonu Google Play Developer API'ye sorulur; durum ve süre
+   * yalnızca Google'ın yanıtından alınır. Kurallar App Store ile aynıdır:
+   * başka bir (var olan) hesaba damgalı satın alma taşınamaz, ömür boyu kaydı
+   * abonelikle ezilmez, silinmiş hesabın satın alması yeni hesaba devredilir.
+   */
+  app.post('/v1/subscription/verify-google', { preHandler: requireAuth }, async (request, reply) => {
+    const parsed = z
+      .object({ productId: z.string().min(1).max(200), purchaseToken: z.string().min(1).max(4096) })
+      .safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_body', message: 'Satın alma bilgisi eksik.' });
+    }
+    if (!googlePlayConfigured()) {
+      return reply.code(503).send({ error: 'not_configured', message: 'Google Play doğrulaması henüz yapılandırılmadı.' });
+    }
+
+    const { productId, purchaseToken } = parsed.data;
+    let state;
+    try {
+      state = await verifyPlayPurchase(productId, purchaseToken);
+    } catch (err) {
+      if (err instanceof PlayPurchaseNotFound) {
+        return reply.code(400).send({ error: 'invalid_transaction', message: 'Satın alma doğrulanamadı.' });
+      }
+      request.log.warn({ err }, 'google play satın alması doğrulanamadı');
+      return reply.code(502).send({ error: 'play_unavailable', message: 'Google Play şu an yanıt vermiyor. Birazdan tekrar denenecek.' });
+    }
+
+    const userId = request.userId!;
+    const owner = state.accountId?.toLowerCase();
+    if (owner && owner !== userId.toLowerCase()) {
+      const ownerExists = await prisma.user.findUnique({ where: { id: owner }, select: { id: true } });
+      if (ownerExists) {
+        return reply
+          .code(409)
+          .send({ error: 'subscription_owned', message: 'Bu abonelik başka bir hesaba bağlı.' });
+      }
+    }
+
+    const current = await prisma.subscription.findUnique({ where: { userId } });
+    if (
+      current &&
+      current.productId === LIFETIME_PRODUCT_ID &&
+      !current.revokedAt &&
+      state.productId !== LIFETIME_PRODUCT_ID
+    ) {
+      return reply.send(entitlementFrom(current));
+    }
+
+    const originalTransactionId = `gp:${purchaseToken}`;
+    const existing = await prisma.subscription.findUnique({ where: { originalTransactionId } });
+    if (existing && existing.userId !== userId) {
+      await prisma.subscription.delete({ where: { id: existing.id } });
+      await invalidateEntitlement(existing.userId);
+    }
+
+    const record = {
+      productId: state.productId,
+      status: state.status,
+      environment: state.test ? 'GooglePlayTest' : 'GooglePlay',
+      expiresAt: state.expiresAt,
+      revokedAt: state.revokedAt,
+      autoRenew: state.autoRenew,
+      store: 'google_play',
+      lastCheckedAt: new Date(),
+    };
+    const saved = await prisma.subscription.upsert({
+      where: { userId },
+      create: { userId, originalTransactionId, ...record },
+      update: { originalTransactionId, ...record },
+    });
+
+    await invalidateEntitlement(userId);
+    return reply.send(entitlementFrom(saved));
+  });
+
+  /**
+   * Google Play gerçek zamanlı geliştirici bildirimleri (Pub/Sub push).
+   *
+   * Bildirim yalnızca hangi satın almanın değiştiğini söyler; asıl durum
+   * Play'e yeniden sorulur. Adresteki gizli değer eşleşmezse istek reddedilir.
+   */
+  app.post('/v1/webhooks/googleplay', async (request, reply) => {
+    const token = (request.query as { token?: string } | undefined)?.token;
+    if (!config.GOOGLE_RTDN_TOKEN || token !== config.GOOGLE_RTDN_TOKEN) {
+      return reply.code(401).send({ error: 'unauthorized' });
+    }
+    const body = z.object({ message: z.object({ data: z.string() }) }).safeParse(request.body);
+    if (!body.success) return reply.code(400).send({ error: 'invalid_body' });
+
+    let note: {
+      subscriptionNotification?: { purchaseToken?: string; notificationType?: number };
+      oneTimeProductNotification?: { purchaseToken?: string };
+      voidedPurchaseNotification?: { purchaseToken?: string };
+      testNotification?: object;
+    };
+    try {
+      note = JSON.parse(Buffer.from(body.data.message.data, 'base64').toString('utf8'));
+    } catch {
+      // Çözülemeyen bildirim yeniden gönderilmesin diye yine onaylanır.
+      return reply.send({ ok: true });
+    }
+
+    const purchaseToken =
+      note.subscriptionNotification?.purchaseToken ??
+      note.oneTimeProductNotification?.purchaseToken ??
+      note.voidedPurchaseNotification?.purchaseToken;
+    if (!purchaseToken) return reply.send({ ok: true });
+
+    const sub = await prisma.subscription.findUnique({ where: { originalTransactionId: `gp:${purchaseToken}` } });
+    // Henüz hiçbir hesaba bağlanmamış satın alma; cihaz giriş yapınca bağlar.
+    if (!sub) return reply.send({ ok: true });
+
+    if (note.voidedPurchaseNotification) {
+      await prisma.subscription.update({
+        where: { id: sub.id },
+        data: { status: 'revoked', revokedAt: new Date(), lastCheckedAt: new Date() },
+      });
+    } else {
+      // Son sorgu zamanı sıfırlanır; böylece kayıt hemen Play'e sorulur.
+      await prisma.subscription.update({ where: { id: sub.id }, data: { lastCheckedAt: null } });
+      const fresh = await prisma.subscription.findUnique({ where: { id: sub.id } });
+      if (fresh) await refreshGooglePurchase(fresh);
+    }
+    await invalidateEntitlement(sub.userId);
+    request.log.info({ type: note.subscriptionNotification?.notificationType ?? 'other' }, 'google play bildirimi işlendi');
+    return reply.send({ ok: true });
   });
 
   /**

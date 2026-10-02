@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+: defter ve ayarlar Google yedeğine girer; oturum jetonları girmez -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="auth.xml" />
+        <exclude domain="sharedpref" path="account.xml" />
+        <exclude domain="sharedpref" path="notifications.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="auth.xml" />
+        <exclude domain="sharedpref" path="notifications.xml" />
+    </device-transfer>
+</data-extraction-rules>

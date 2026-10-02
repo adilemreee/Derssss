@@ -1,0 +1,437 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "e00489d955e48982638d5444c820964a",
+    "entities": [
+      {
+        "tableName": "students",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `subject` TEXT NOT NULL, `grade` TEXT NOT NULL, `phone` TEXT NOT NULL, `parentName` TEXT NOT NULL, `parentPhone` TEXT NOT NULL, `hourlyRate` REAL NOT NULL, `startDate` INTEGER NOT NULL, `colorIndex` INTEGER NOT NULL, `notes` TEXT NOT NULL, `isArchived` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "subject",
+            "columnName": "subject",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "grade",
+            "columnName": "grade",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "phone",
+            "columnName": "phone",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "parentName",
+            "columnName": "parentName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "parentPhone",
+            "columnName": "parentPhone",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hourlyRate",
+            "columnName": "hourlyRate",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startDate",
+            "columnName": "startDate",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "colorIndex",
+            "columnName": "colorIndex",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isArchived",
+            "columnName": "isArchived",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "lessons",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `studentId` TEXT, `templateId` TEXT, `paymentId` TEXT, `date` INTEGER NOT NULL, `duration` INTEGER NOT NULL, `status` TEXT NOT NULL, `cancellationReason` TEXT NOT NULL, `topic` TEXT NOT NULL, `note` TEXT NOT NULL, `feeOverride` REAL, `usesCustomFee` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "studentId",
+            "columnName": "studentId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "templateId",
+            "columnName": "templateId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "paymentId",
+            "columnName": "paymentId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "duration",
+            "columnName": "duration",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cancellationReason",
+            "columnName": "cancellationReason",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "topic",
+            "columnName": "topic",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "feeOverride",
+            "columnName": "feeOverride",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "usesCustomFee",
+            "columnName": "usesCustomFee",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_lessons_studentId",
+            "unique": false,
+            "columnNames": [
+              "studentId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_lessons_studentId` ON `${TABLE_NAME}` (`studentId`)"
+          },
+          {
+            "name": "index_lessons_templateId",
+            "unique": false,
+            "columnNames": [
+              "templateId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_lessons_templateId` ON `${TABLE_NAME}` (`templateId`)"
+          },
+          {
+            "name": "index_lessons_paymentId",
+            "unique": false,
+            "columnNames": [
+              "paymentId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_lessons_paymentId` ON `${TABLE_NAME}` (`paymentId`)"
+          },
+          {
+            "name": "index_lessons_date",
+            "unique": false,
+            "columnNames": [
+              "date"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_lessons_date` ON `${TABLE_NAME}` (`date`)"
+          }
+        ]
+      },
+      {
+        "tableName": "payments",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `studentId` TEXT, `date` INTEGER NOT NULL, `amount` REAL NOT NULL, `method` TEXT NOT NULL, `note` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "studentId",
+            "columnName": "studentId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "amount",
+            "columnName": "amount",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "method",
+            "columnName": "method",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_payments_studentId",
+            "unique": false,
+            "columnNames": [
+              "studentId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_payments_studentId` ON `${TABLE_NAME}` (`studentId`)"
+          },
+          {
+            "name": "index_payments_date",
+            "unique": false,
+            "columnNames": [
+              "date"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_payments_date` ON `${TABLE_NAME}` (`date`)"
+          }
+        ]
+      },
+      {
+        "tableName": "homeworks",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `studentId` TEXT, `title` TEXT NOT NULL, `detail` TEXT NOT NULL, `assignedDate` INTEGER NOT NULL, `dueDate` INTEGER NOT NULL, `isDone` INTEGER NOT NULL, `doneDate` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "studentId",
+            "columnName": "studentId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "detail",
+            "columnName": "detail",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "assignedDate",
+            "columnName": "assignedDate",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dueDate",
+            "columnName": "dueDate",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isDone",
+            "columnName": "isDone",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "doneDate",
+            "columnName": "doneDate",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_homeworks_studentId",
+            "unique": false,
+            "columnNames": [
+              "studentId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_homeworks_studentId` ON `${TABLE_NAME}` (`studentId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "templates",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `studentId` TEXT, `weekday` INTEGER NOT NULL, `hour` INTEGER NOT NULL, `minute` INTEGER NOT NULL, `duration` INTEGER NOT NULL, `feeOverride` REAL, `usesCustomFee` INTEGER NOT NULL, `isPaused` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `generatedUntil` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "studentId",
+            "columnName": "studentId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "weekday",
+            "columnName": "weekday",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hour",
+            "columnName": "hour",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "minute",
+            "columnName": "minute",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "duration",
+            "columnName": "duration",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "feeOverride",
+            "columnName": "feeOverride",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "usesCustomFee",
+            "columnName": "usesCustomFee",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isPaused",
+            "columnName": "isPaused",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "generatedUntil",
+            "columnName": "generatedUntil",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_templates_studentId",
+            "unique": false,
+            "columnNames": [
+              "studentId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_templates_studentId` ON `${TABLE_NAME}` (`studentId`)"
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e00489d955e48982638d5444c820964a')"
+    ]
+  }
+}
